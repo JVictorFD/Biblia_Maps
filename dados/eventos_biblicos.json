@@ -9,7 +9,10 @@
         "local_atual": "Sul do Iraque / Golfo Pérsico",
         "coordenadas": [31.0000, 47.0000],
         "testamento": "Antigo Testamento",
-        "icone": "leaf"
+        "icone": "leaf",
+        "imagem_cena": "jardim_eden.jpg",
+        "versiculo": "\"E o Senhor Deus plantou um jardim no Éden, na banda do oriente; e pôs ali o homem que tinha formContextualizado.\" — Gênesis 2:8",
+        "explicacao": "Considerado o berço da humanidade e da comunhão perfeita entre o Criador e sua criação. Situado geograficamente na região dos grandes rios da Mesopotâmia, este local representa a harmonia original antes da queda, marcando o ponto de partida de toda a narrativa bíblica da redenção."
     },
     {
         "id": "arca_noe",
@@ -21,7 +24,10 @@
         "local_atual": "Fronteira Turquia / Armênia",
         "coordenadas": [39.7022, 44.2991],
         "testamento": "Antigo Testamento",
-        "icone": "cloud"
+        "icone": "cloud",
+        "imagem_cena": "arca_noe.jpg",
+        "versiculo": "\"E a arca repousou no sétimo mês, aos dezessete dias do mês, sobre os montes de Ararat.\" — Gênesis 8:4",
+        "explicacao": "Após o Dilúvio universal que purificou a terra da corrupção, a arca encontrou refúgio nas alturas imponentes do Monte Ararat. O evento simboliza o recomeço da aliança de Deus com a humanidade, selada pelo sinal do arco-íris."
     },
     {
         "id": "chamado_abraao",
@@ -33,7 +39,10 @@
         "local_atual": "Tell el-Muqayyar, Iraque",
         "coordenadas": [30.9634, 46.1046],
         "testamento": "Antigo Testamento",
-        "icone": "star"
+        "icone": "star",
+        "imagem_cena": "chamado_abraao.jpg",
+        "versiculo": "\"Ora, o Senhor disse a Abrão: Sai da tua terra, e da tua parentescos, e da casa de teu pai, para a terra que eu te mostrarei.\" — Gênesis 12:1",
+        "explicacao": "Saindo de uma próspera e idólatra cidade de Ur, Abraão aceita o chamado de fé para caminhar rumo a uma terra desconhecida. Este ato de obediência radical deu início à linhagem patriarcal e à promessa de que por meio de sua descendência todas as famílias da terra seriam abençoadas."
     },
     {
         "id": "sodoma_gomorra",
@@ -45,7 +54,10 @@
         "local_atual": "Região Sul do Mar Morto, Jordânia/Israel",
         "coordenadas": [31.1333, 35.4333],
         "testamento": "Antigo Testamento",
-        "icone": "fire"
+        "icone": "fire",
+        "imagem_cena": "sodoma_gomorra.jpg",
+        "versiculo": "\"Então o Senhor fez chover enxofre e fogo, do Senhor desde os céus, sobre Sodoma e Gomorra...\" — Gênesis 19:24",
+        "explicacao": "Localizadas no fértil Vale do Jordão, as cidades tornaram-se símbolos máximos da depravação moral e do julgamento divino implacável. A região hoje árida e rica em minerais no entorno do Mar Morto serve como lembrança histórica permanente."
     },
     {
         "id": "mar_vermelho",
@@ -57,7 +69,10 @@
         "local_atual": "Golfo de Suez, Egito",
         "coordenadas": [29.9329, 32.5516],
         "testamento": "Antigo Testamento",
-        "icone": "tint"
+        "icone": "tint",
+        "imagem_cena": "mar_vermelho.jpg",
+        "versiculo": "\"Então Moisés estendeu a sua mão sobre o mar, e o Senhor fez retirar o mar por um forte vento oriental... e as águas foram divididas.\" — Êxodo 14:21",
+        "explicacao": "Encurralados entre o poderoso exército egípcio e as águas profundas, os israelitas testemunharam um dos maiores milagres libertadores da história sagrada, marcando a transição definitiva da escravidão para a liberdade."
     },
     {
         "id": "monte_sinai",
@@ -69,7 +84,10 @@
         "local_atual": "Monte Sinai (Jabal Musa), Egito",
         "coordenadas": [28.5393, 33.9749],
         "testamento": "Antigo Testamento",
-        "icone": "flash"
+        "icone": "flash",
+        "imagem_cena": "monte_sinai.jpg",
+        "versiculo": "\"E Deus falou todas estas palavras, dizendo: Eu sou o Senhor teu Deus, que te tirei da terra do Egito, da casa da servidão.\" — Êxodo 20:1-2",
+        "explicacao": "Envolto em fogo, fumaça e trovões, o Monte Sinai tornou-se o palco onde a lei moral de Deus foi entregue a Moisés, moldando a identidade civil, ética e espiritual da nação de Israel."
     },
     {
         "id": "muralhas_jerico",
@@ -81,7 +99,10 @@
         "local_atual": "Tell es-Sultan, Palestina",
         "coordenadas": [31.8716, 35.4439],
         "testamento": "Antigo Testamento",
-        "icone": "tower"
+        "icone": "tower",
+        "imagem_cena": "muralhas_jerico.jpg",
+        "versiculo": "\"E sucedeu que, ouvindo o povo o sonido da buzina, ganiu o povo com grande alarido; e o muro caiu abaixo...\" — Josué 6:20",
+        "explicacao": "A primeira grande conquista militar na entrada de Canaã desafiou a lógica militar convencional: as imponentes fortificações de Jericó vieram abaixo após o povo rodear a cidade em obediência estricta às ordens divinas."
     },
     {
         "id": "davi_golias",
@@ -93,7 +114,10 @@
         "local_atual": "Sudoeste de Jerusalém, Israel",
         "coordenadas": [31.6833, 34.9833],
         "testamento": "Antigo Testamento",
-        "icone": "user"
+        "icone": "user",
+        "imagem_cena": "davi_golias.jpg",
+        "versiculo": "\"Venho a ti em nome do Senhor dos Exércitos, o Deus dos exércitos de Israel, a quem tens oprobriado.\" — 1 Samuel 17:45",
+        "explicacao": "No fértil Vale de Elá, um jovem pastor armado apenas com uma funda e pedras lisas enfrentou o temível gigante filisteu, demonstrando que a vitória não depende da força física ou armamentos, mas da confiança absoluta em Deus."
     },
     {
         "id": "templo_salomao",
@@ -105,7 +129,10 @@
         "local_atual": "Monte do Templo, Jerusalém",
         "coordenadas": [31.7780, 35.2354],
         "testamento": "Antigo Testamento",
-        "icone": "home"
+        "icone": "home",
+        "imagem_cena": "templo_salomao.jpg",
+        "versiculo": "\"E a casa que o rei Salomão edificou ao Senhor era de comprimentos de sessenta côvados...\" — 1 Reis 6:2",
+        "explicacao": "O ápice arquitetônico e espiritual da monarquia unida de Israel. O Templo de Salomão centralizou definitivamente o culto a Yahweh em Jerusalém, abrigando a Arca da Aliança no Santo dos Santos."
     },
     {
         "id": "carmelo_elias",
@@ -117,7 +144,10 @@
         "local_atual": "Haifa, Israel",
         "coordenadas": [32.7333, 35.0467],
         "testamento": "Antigo Testamento",
-        "icone": "fire"
+        "icone": "fire",
+        "imagem_cena": "carmelo_elias.jpg",
+        "versiculo": "\"Então caiu o fogo do Senhor, e consumiu o holocausto, e a lenha, e as pedras, e o pó, e ainda lambeu a água que estava no rego.\" — 1 Reis 18:38",
+        "explicacao": "No alto do Monte Carmelo, o profeta Elias confrontou o sincretismo religioso e a apostasia nacional, provando de forma espetacular através do fogo dos céus que o Deus de Israel era o único Deus verdadeiro."
     },
     {
         "id": "daniel_leoes",
@@ -129,7 +159,10 @@
         "local_atual": "Al-Hillah, Iraque",
         "coordenadas": [32.5422, 44.4210],
         "testamento": "Antigo Testamento",
-        "icone": "flag"
+        "icone": "flag",
+        "imagem_cena": "daniel_leoes.jpg",
+        "versiculo": "\"O meu Deus enviou o seu anjo, e fechou a boca dos leões, para que não me fizessem dano...\" — Daniel 6:22",
+        "explicacao": "Mesmo sob o decreto implacável do Império Persa que proibia a adoração a qualquer deus exceto ao rei, Daniel manteve sua rotina de oração inabalável, encontrando livramento milagroso na cova dos leões."
     },
     {
         "id": "nascimento_jesus",
@@ -141,7 +174,10 @@
         "local_atual": "Belém, Palestina",
         "coordenadas": [31.7054, 35.2024],
         "testamento": "Novo Testamento",
-        "icone": "star"
+        "icone": "star",
+        "imagem_cena": "Jesus_nascimento.jpg",
+        "versiculo": "\"E deu à luz a seu filho primogênito, e envolveu-o em panos, e deitou-o numa manjedoura, porque não havia lugar para eles na estalagem.\" — Lucas 2:7",
+        "explicacao": "A pequena vila de Belém estava superlotada devido ao recenseamento romano. Numa humilde gruta, cumpre-se a profecia messiânica, simbolizando a encarnação humilde que mudou para sempre a história da humanidade."
     },
     {
         "id": "batismo_jesus",
@@ -153,7 +189,10 @@
         "local_atual": "Qasr el Yahud, fronteira Israel/Jordânia",
         "coordenadas": [31.8384, 35.5463],
         "testamento": "Novo Testamento",
-        "icone": "tint"
+        "icone": "tint",
+        "imagem_cena": "batismo_jesus.jpg",
+        "versiculo": "\"E, sendo batizado Jesus, saiu logo da água, e eis que os céus se lhe abriram, e viu o Espírito de Deus descendo como pomba...\" — Mateus 3:16",
+        "explicacao": "Nas margens do Rio Jordão, o ministério público de Jesus é inaugurado oficialmente. A descida do Espírito Santo e a voz do Pai declarando sua filiação revelam publicamente a identidade trinitária do Messias."
     },
     {
         "id": "sermao_montanha",
@@ -165,7 +204,10 @@
         "local_atual": "Norte do Mar da Galileia, Israel",
         "coordenadas": [32.8806, 35.5558],
         "testamento": "Novo Testamento",
-        "icone": "bullhorn"
+        "icone": "bullhorn",
+        "imagem_cena": "sermao_montanha.jpg",
+        "versiculo": "\"Bem-aventurados os pobres de espírito, porque deles é o reino dos céus...\" — Mateus 5:3",
+        "explicacao": "O mais célebre discurso ético e espiritual da história humana. Nas colinas da Galileia, Jesus redefiniu os preceitos do Reino de Deus, contrapondo-se ao legalismo da época com princípios fundamentados no amor e na graça."
     },
     {
         "id": "andar_aguas",
@@ -177,7 +219,10 @@
         "local_atual": "Lago de Tiberíades, Israel",
         "coordenadas": [32.8239, 35.5908],
         "testamento": "Novo Testamento",
-        "icone": "cloud"
+        "icone": "cloud",
+        "imagem_cena": "andar_aguas.jpg",
+        "versiculo": "\"E Jesus, logo lhes falando, disse: Tende bom ânimo, sou eu, não temais.\" — Mateus 14:27",
+        "explicacao": "Em meio a uma tempestade furiosa no Mar da Galileia, Jesus desafia as leis da física ao caminhar sobre as ondas, fortalecendo a fé vacilante de Pedro e demonstrando autoridade absoluta sobre as forças da natureza."
     },
     {
         "id": "crucificacao_ressurreicao",
@@ -189,7 +234,10 @@
         "local_atual": "Igreja do Santo Sepulcro, Jerusalém",
         "coordenadas": [31.7785, 35.2296],
         "testamento": "Novo Testamento",
-        "icone": "plus"
+        "icone": "plus",
+        "imagem_cena": "crucificacao.jpg",
+        "versiculo": "\"Ele não está aqui, porque já ressuscitou, como tinha dito. Vinde, vede o lugar onde o Senhor jazia.\" — Mateus 28:6",
+        "explicacao": "O ponto central e nevrálgico da fé cristã. O sacrifício vicário no Gólgota seguido pelo triunfo glorioso da ressurreição ao terceiro dia rompeu as barreiras do pecado e abriu o caminho eterno para a salvação."
     },
     {
         "id": "conversao_paulo",
@@ -201,7 +249,10 @@
         "local_atual": "Damasco, Síria",
         "coordenadas": [33.5138, 36.2765],
         "testamento": "Novo Testamento",
-        "icone": "eye-open"
+        "icone": "eye-open",
+        "imagem_cena": "conversao_paulo.jpg",
+        "versiculo": "\"E, caindo em terra, ouviu uma voz que lhe dizia: Saulo, Saulo, por que me persegues?\" — Atos 9:4",
+        "explicacao": "Uma reviravolta dramática na história do cristianismo primitivo. Um implacável perseguidor da Igreja é fulminado pela luz celestial do Cristo ressuscitado, transformando-se no maior apóstolo e teólogo dos gentios."
     },
     {
         "id": "paulo_atenas",
@@ -213,7 +264,10 @@
         "local_atual": "Acrópole de Atenas, Grécia",
         "coordenadas": [37.9723, 23.7226],
         "testamento": "Novo Testamento",
-        "icone": "comment"
+        "icone": "comment",
+        "imagem_cena": "paulo_atenas.jpg",
+        "versiculo": "\"Porque, passando eu e vendo os vossos santuários, achei também um altar em que estava escrito: AO DEUS DESCONHECIDO...\" — Atos 17:23",
+        "explicacao": "No coração intelectual do mundo clássico grego, o apóstolo Paulo utilizou a filosofia local e um altar dedicado a uma divindade anônima como ponto de contato para pregar corajosamente o Evangelho do Deus Criador e ressuscitado."
     },
     {
         "id": "prisao_paulo",
@@ -225,7 +279,10 @@
         "local_atual": "Roma, Itália",
         "coordenadas": [41.9028, 12.4964],
         "testamento": "Novo Testamento",
-        "icone": "lock"
+        "icone": "lock",
+        "imagem_cena": "prisao_paulo.jpg",
+        "versiculo": "\"E Paulo ficou dois anos inteiros na sua própria habitação que alugara, e recebia a todos quantos vinham a ele...\" — Atos 28:30",
+        "explicacao": "Mesmo confinado sob custódia domiciliar romana, o apostolado de Paulo não conheceu correntes: dali emergiram epístolas profundas que estruturaram a doutrina cristã e consolidaram a expansão da mensagem além das fronteiras judaicas."
     },
     {
         "id": "apocalipse_joao",
@@ -237,6 +294,9 @@
         "local_atual": "Patmos, Mar Egeu, Grécia",
         "coordenadas": [37.3090, 26.5456],
         "testamento": "Novo Testamento",
-        "icone": "book"
+        "icone": "book",
+        "imagem_cena": "apocalipse_joao.jpg",
+        "versiculo": "\"Eu, João, que também sou vosso irmão, e companheiro na aflição, e no reino, e paciência de Jesus Cristo, estava na ilha chamada Patmos, por causa da palavra de Deus...\" — Apocalipse 1:9",
+        "explicacao": "Exilado por causa de sua fé na inóspita Ilha de Patmos, o apóstolo João recebeu as visões celestiais magníficas que compõem o livro do Apocalipse, revelando o triunfo final de Cristo sobre as forças do mal e a consumção dos séculos."
     }
 ]
