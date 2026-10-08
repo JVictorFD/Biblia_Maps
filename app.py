@@ -467,3 +467,4 @@ else:
         </div>
         """
         components.html(html_modo_andarilho, height=750)
+        
