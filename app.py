@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Injeção de CSS para ecrã inteiro e estilo papiro
+# Injeção de CSS para ecrã inteiro, papiro, e o layout das legendas flutuantes
 st.markdown("""
     <style>
         .block-container {
@@ -24,9 +24,76 @@ st.markdown("""
             filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95);
             border-radius: 8px;
         }
-        img {
+        
+        .andarilho-container {
+            position: relative;
+            width: 100%;
+            height: 80vh;
+            background-color: #0d1117;
             border-radius: 12px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            overflow: hidden;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .andarilho-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0.85; 
+        }
+        
+        .creditos-legenda {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            max-width: 900px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 20px 30px;
+            color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+            z-index: 10;
+        }
+        
+        .creditos-legenda h2 {
+            margin: 0 0 8px 0;
+            font-size: 22px;
+            color: #fbbf24;
+            border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+            padding-bottom: 4px;
+        }
+        
+        .creditos-legenda p.sub {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            color: #94a3b8;
+            font-style: italic;
+        }
+        
+        .creditos-legenda blockquote {
+            margin: 8px 0;
+            padding-left: 12px;
+            border-left: 3px solid #fbbf24;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+        
+        .creditos-legenda p.explicacao {
+            margin: 8px 0 0 0;
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.4;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -34,8 +101,6 @@ st.markdown("""
 # Gerenciamento de Estados na Sessão
 if 'modo_andarilho_ativo' not in st.session_state:
     st.session_state.modo_andarilho_ativo = False
-if 'cena_selecionada' not in st.session_state:
-    st.session_state.cena_selecionada = "Jesus_nascimento.jpg"
 if 'coordenadas_foco' not in st.session_state:
     st.session_state.coordenadas_foco = [31.7, 35.2]
 if 'zoom_foco' not in st.session_state:
@@ -54,11 +119,10 @@ def carregar_dados():
 
 eventos = carregar_dados()
 
-# Extração dinâmica de listas para os filtros avançados
+# Extração dinâmica de listas para os filtros de seleção
 testamentos_unicos = ["Todos"] + sorted(list(set(e.get("testamento", "") for e in eventos if e.get("testamento"))))
 epocas_unicas = ["Todas"] + sorted(list(set(e.get("epoca", "") for e in eventos if e.get("epoca"))))
 
-# Extrai e limpa lista de personagens individuais
 personagens_brutos = []
 for e in eventos:
     if "personagens" in e:
@@ -71,7 +135,15 @@ with st.sidebar:
     st.title("📜 Bíblia Maps")
     st.write("Explore os eventos históricos da Bíblia de forma interativa.")
     
-    st.header("Filtros Avançados")
+    st.header("Pesquisa Avançada")
+    termo_busca = st.text_input(
+        "Buscar nomes, capítulos ou combine com '+':",
+        placeholder="Ex: João, Lucas 2, Pedro+Jesus"
+    )
+    
+    st.markdown("---")
+    
+    st.header("Filtros Categóricos")
     filtro_testamento = st.selectbox("Período (Testamento):", testamentos_unicos)
     filtro_epoca = st.selectbox("Época / Fase:", epocas_unicas)
     filtro_personagem = st.selectbox("Personagem Específico:", personagens_unicos)
@@ -89,9 +161,9 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.5.0 - Multi-Filtros & Modo Andarilho Dinâmico")
+    st.caption("v1.8.1 - Correção Visual de Pesquisa")
 
-# --- LÓGICA DE FILTRAGEM ---
+# --- LÓGICA DE FILTRAGEM MULTICRITÉRIOS ---
 eventos_filtrados = []
 for e in eventos:
     match_testamento = (filtro_testamento == "Todos" or e.get("testamento") == filtro_testamento)
@@ -102,20 +174,30 @@ for e in eventos:
         pers_evento = [p.strip() for p in e.get("personagens", "").split(",")]
         match_personagem = (filtro_personagem in pers_evento)
         
-    if match_testamento and match_epoca and match_personagem:
+    match_busca = True
+    if termo_busca:
+        termos_solicitados = [t.strip().lower() for t in termo_busca.split('+') if t.strip()]
+        if termos_solicitados:
+            texto_completo_evento = " ".join([str(v) for v in e.values()]).lower()
+            match_busca = all(termo in texto_completo_evento for termo in termos_solicitados)
+        
+    if match_testamento and match_epoca and match_personagem and match_busca:
         eventos_filtrados.append(e)
 
-# Redirecionamento automático de foco no mapa ao selecionar um personagem específico
-if filtro_personagem != "Todos" and len(eventos_filtrados) == 1:
+if len(eventos_filtrados) == 1:
     st.session_state.coordenadas_foco = eventos_filtrados[0]["coordenadas"]
     st.session_state.zoom_foco = 10
-elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_epoca == "Todas":
+elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_epoca == "Todas" and not termo_busca:
     st.session_state.coordenadas_foco = [31.7, 35.2]
     st.session_state.zoom_foco = 6
 
 # --- CONTEÚDO PRINCIPAL ---
 if not st.session_state.modo_andarilho_ativo:
-    # Renderiza o MAPA GLOBAL
+    # 1. Se a lista estiver vazia, exibe o aviso claramente no topo da tela
+    if not eventos_filtrados:
+        st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
+
+    # 2. Renderiza o MAPA GLOBAL SEMPRE, evitando colapso visual do layout
     mapa_biblico = folium.Map(
         location=st.session_state.coordenadas_foco, 
         zoom_start=st.session_state.zoom_foco, 
@@ -125,21 +207,19 @@ if not st.session_state.modo_andarilho_ativo:
 
     cluster_eventos = MarkerCluster().add_to(mapa_biblico)
 
+    # 3. Adiciona os pinos apenas se houverem eventos filtrados
     for evento in eventos_filtrados:
         coord = evento["coordenadas"]
         cor_marcador = "darkred" if evento.get("testamento") == "Antigo Testamento" else "cadetblue"
         
-        # Atualiza a cena na sessão caso o usuário queira transicionar direto
-        img_cena = evento.get("imagem_cena", "Jesus_nascimento.jpg")
-        
         html_popup = f"""
         <div style="font-family: Arial, sans-serif; width: 260px;">
-            <h4 style="margin-bottom: 5px; color: #2C3E50; border-bottom: 1px solid #eee; padding-bottom: 5px;">{evento['evento']}</h4>
-            <p style="margin: 4px 0; font-size: 13px;"><b>Local:</b> {evento['subregiao']}</p>
-            <p style="margin: 4px 0; font-size: 13px;"><b>Envolvidos:</b> {evento['personagens']}</p>
-            <p style="margin: 4px 0; font-size: 13px;"><b>Livro:</b> <i>{evento['referencia']}</i></p>
+            <h4 style="margin-bottom: 5px; color: #2C3E50; border-bottom: 1px solid #eee; padding-bottom: 5px;">{evento.get('evento', '')}</h4>
+            <p style="margin: 4px 0; font-size: 13px;"><b>Local:</b> {evento.get('subregiao', '')}</p>
+            <p style="margin: 4px 0; font-size: 13px;"><b>Envolvidos:</b> {evento.get('personagens', '')}</p>
+            <p style="margin: 4px 0; font-size: 13px;"><b>Livro:</b> <i>{evento.get('referencia', '')}</i></p>
             <div style="margin-top: 10px; background-color: #f8f9fa; padding: 5px; border-radius: 4px;">
-                <p style="margin: 0; font-size: 11px; color: #7f8c8d;"><b>Geografia Atual:</b> {evento['local_atual']}</p>
+                <p style="margin: 0; font-size: 11px; color: #7f8c8d;"><b>Geografia Atual:</b> {evento.get('local_atual', '')}</p>
             </div>
         </div>
         """
@@ -147,37 +227,57 @@ if not st.session_state.modo_andarilho_ativo:
         folium.Marker(
             location=coord,
             popup=folium.Popup(html_popup, max_width=300),
-            tooltip=evento['evento'],
+            tooltip=evento.get('evento', 'Local'),
             icon=folium.Icon(color=cor_marcador, icon=evento.get('icone', 'info-sign'))
         ).add_to(cluster_eventos)
 
+    # Exibe o mapa garantindo o espaço alocado
     components.html(mapa_biblico._repr_html_().replace("<iframe ", "<iframe title='folium_map' "), height=750)
 
 else:
-    # Renderiza o MODO ANDARILHO 2D (Janela Imersiva Dinâmica)
-    st.subheader("🚶‍♂️ Modo Andarilho: Cena Histórica Imersiva")
-    
-    diretorio_atual = os.path.dirname(os.path.abspath(__file__))
-    
-    # Se houver eventos filtrados, pega a imagem do primeiro evento correspondente; caso contrário, usa o padrão
-    imagem_alvo = "Jesus_nascimento.jpg"
-    if eventos_filtrados:
-        imagem_alvo = eventos_filtrados[0].get("imagem_cena", "Jesus_nascimento.jpg")
+    # Renderiza o MODO ANDARILHO 2D
+    if not eventos_filtrados:
+        st.warning("Nenhum evento corresponde à busca atual. Limpe a barra de pesquisa para retornar ao modo andarilho padrão.")
+        # Gera um container de fallback para evitar colapso do layout
+        html_modo_andarilho = f"""
+        <div class="andarilho-container">
+            <div class="creditos-legenda" style="text-align: center;">
+                <h2>📍 Local não encontrado</h2>
+                <p class="explicacao">Ajuste os filtros ou a busca lateral para explorar os cenários bíblicos.</p>
+            </div>
+        </div>
+        """
+        components.html(html_modo_andarilho, height=750)
+    else:
+        evento_ativo = eventos_filtrados[0]
         
-    caminho_imagem = os.path.join(diretorio_atual, "dados", imagem_alvo)
-    if not os.path.exists(caminho_imagem):
-        caminho_imagem = os.path.join(diretorio_atual, "dados", "Jesus_nascimento.jpg")
-    
-    try:
-        st.image(caminho_imagem, use_container_width=True)
+        nome_evento = evento_ativo.get("evento", "Cena Bíblica")
+        subregiao = evento_ativo.get("subregiao", "")
+        arquivo_img = evento_ativo.get("imagem_cena", "")
+        texto_versiculo = evento_ativo.get("versiculo", "Texto bíblico indisponível no momento.")
+        texto_explicacao = evento_ativo.get("explicacao", "Contextualização histórica em desenvolvimento para este local.")
         
-        st.markdown("""
-        ---
-        ### Experiência Imersiva no Local Bíblico
+        diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+        caminho_imagem = os.path.join(diretorio_atual, "dados", arquivo_img) if arquivo_img else ""
         
-        > *"Lâmpada para os meus pés é a tua palavra, e luz para o meu caminho."* — **Salmos 119:105**
+        tem_imagem = caminho_imagem and os.path.exists(caminho_imagem)
         
-        A contemplação deste cenário transporta-o diretamente para o contexto da época. Utilize os filtros na barra lateral para alternar entre épocas, acontecimentos ou personagens e explorar novas janelas históricas.
-        """)
-    except Exception as e:
-        st.error(f"Erro ao carregar a cena imersiva: {e}")
+        tag_imagem = ""
+        if tem_imagem:
+            import base64
+            with open(caminho_imagem, "rb") as img_file:
+                img_base64 = base64.b64encode(img_file.read()).decode()
+            tag_imagem = f'<img src="data:image/jpeg;base64,{img_base64}" alt="{nome_evento}">'
+
+        html_modo_andarilho = f"""
+        <div class="andarilho-container">
+            {tag_imagem}
+            <div class="creditos-legenda">
+                <h2>📍 {nome_evento}</h2>
+                <p class="sub"><b>Região:</b> {subregiao}</p>
+                <blockquote>{texto_versiculo}</blockquote>
+                <p class="explicacao">{texto_explicacao}</p>
+            </div>
+        </div>
+        """
+        components.html(html_modo_andarilho, height=750)
