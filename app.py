@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Injeção de CSS para ecrã inteiro, papiro, e o layout das legendas flutuantes
+# Injeção de CSS Base (Layout, Tela Cheia e Legendas Flutuantes)
 st.markdown("""
     <style>
         .block-container {
@@ -19,10 +19,6 @@ st.markdown("""
             padding-bottom: 0rem;
             padding-left: 0rem;
             padding-right: 0rem;
-        }
-        iframe[title="folium_map"] {
-            filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95);
-            border-radius: 8px;
         }
         
         .andarilho-container {
@@ -135,6 +131,12 @@ with st.sidebar:
     st.title("📜 Bíblia Maps")
     st.write("Explore os eventos históricos da Bíblia de forma interativa.")
     
+    st.header("Aparência")
+    # Novo Toggle para alternar os visuais do mapa
+    tema_sepia = st.toggle("Ativar Tema Pergaminho (Sépia)", value=True)
+    
+    st.markdown("---")
+    
     st.header("Pesquisa Avançada")
     termo_busca = st.text_input(
         "Buscar nomes, capítulos ou combine com '+':",
@@ -161,7 +163,26 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.8.1 - Correção Visual de Pesquisa")
+    st.caption("v1.9.0 - Alternância Dinâmica de Temas")
+
+# --- INJEÇÃO CONDICIONAL DE CSS DO MAPA ---
+if tema_sepia:
+    st.markdown("""
+        <style>
+            iframe[title="folium_map"] {
+                filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95);
+                border-radius: 8px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+        <style>
+            iframe[title="folium_map"] {
+                border-radius: 8px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
 # --- LÓGICA DE FILTRAGEM MULTICRITÉRIOS ---
 eventos_filtrados = []
@@ -193,11 +214,9 @@ elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_ep
 
 # --- CONTEÚDO PRINCIPAL ---
 if not st.session_state.modo_andarilho_ativo:
-    # 1. Se a lista estiver vazia, exibe o aviso claramente no topo da tela
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
 
-    # 2. Renderiza o MAPA GLOBAL SEMPRE, evitando colapso visual do layout
     mapa_biblico = folium.Map(
         location=st.session_state.coordenadas_foco, 
         zoom_start=st.session_state.zoom_foco, 
@@ -207,7 +226,6 @@ if not st.session_state.modo_andarilho_ativo:
 
     cluster_eventos = MarkerCluster().add_to(mapa_biblico)
 
-    # 3. Adiciona os pinos apenas se houverem eventos filtrados
     for evento in eventos_filtrados:
         coord = evento["coordenadas"]
         cor_marcador = "darkred" if evento.get("testamento") == "Antigo Testamento" else "cadetblue"
@@ -231,14 +249,11 @@ if not st.session_state.modo_andarilho_ativo:
             icon=folium.Icon(color=cor_marcador, icon=evento.get('icone', 'info-sign'))
         ).add_to(cluster_eventos)
 
-    # Exibe o mapa garantindo o espaço alocado
     components.html(mapa_biblico._repr_html_().replace("<iframe ", "<iframe title='folium_map' "), height=750)
 
 else:
-    # Renderiza o MODO ANDARILHO 2D
     if not eventos_filtrados:
         st.warning("Nenhum evento corresponde à busca atual. Limpe a barra de pesquisa para retornar ao modo andarilho padrão.")
-        # Gera um container de fallback para evitar colapso do layout
         html_modo_andarilho = f"""
         <div class="andarilho-container">
             <div class="creditos-legenda" style="text-align: center;">
