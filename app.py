@@ -184,7 +184,6 @@ for e in eventos:
     if match_testamento and match_epoca and match_personagem and match_busca:
         eventos_filtrados.append(e)
 
-# Redirecionamento de foco básico
 if len(eventos_filtrados) == 1:
     st.session_state.coordenadas_foco = eventos_filtrados[0]["coordenadas"]
     st.session_state.zoom_foco = 10
@@ -195,17 +194,14 @@ elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_ep
 # --- BARRA LATERAL (ITINERÁRIO E MODO IMERSIVO DYNAMIC) ---
 seguir_caminhada = False
 with st.sidebar:
-    # Lógica da nova funcionalidade "Seguir Caminhada"
     if filtro_personagem != "Todos" and len(eventos_filtrados) > 1:
         st.markdown("---")
         st.subheader("🗺️ Rota Histórica")
         
-        # Botão em destaque ativado dinamicamente
         seguir_caminhada = st.toggle(f"🚶‍♂️ Seguir caminhada de {filtro_personagem}", value=False)
         
         if seguir_caminhada:
             st.info(f"Itinerário mapeado ({len(eventos_filtrados)} locais):")
-            # Gera a lista estilo Google Maps
             for i, ev in enumerate(eventos_filtrados):
                 st.markdown(f"<div class='itinerario-box'><b>{i+1}. {ev.get('subregiao', 'Local')}</b><br><small>{ev.get('evento', '')}</small></div>", unsafe_allow_html=True)
                 
@@ -221,14 +217,13 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.12.0 - Seguir Caminhada Interativa")
+    st.caption("v1.13.0 - Passagens Bíblicas no Pop-up")
 
 # --- CONTEÚDO PRINCIPAL ---
 if not st.session_state.modo_andarilho_ativo:
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
 
-    # Criação da camada base do mapa
     mapa_biblico = folium.Map(
         location=st.session_state.coordenadas_foco, 
         zoom_start=st.session_state.zoom_foco, 
@@ -236,7 +231,6 @@ if not st.session_state.modo_andarilho_ativo:
         attr="Esri"
     )
 
-    # Adiciona a camada de fronteiras se solicitada
     if tema_delineado:
         folium.TileLayer(
             tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
@@ -246,21 +240,17 @@ if not st.session_state.modo_andarilho_ativo:
             control=False
         ).add_to(mapa_biblico)
 
-    # Lógica de renderização da Linha de Caminhada (Nova Funcionalidade)
     if seguir_caminhada and len(eventos_filtrados) > 1:
         coords_rota = [evento["coordenadas"] for evento in eventos_filtrados]
-        
-        # Desenha a rota tracejada
         folium.PolyLine(
             coords_rota,
-            color="#e74c3c", # Vermelho histórico
+            color="#e74c3c",
             weight=3,
             opacity=0.8,
             dash_array="10",
             tooltip=f"Jornada de {filtro_personagem}"
         ).add_to(mapa_biblico)
         
-        # Faz a câmera do mapa enquadrar automaticamente a rota completa
         mapa_biblico.fit_bounds(coords_rota)
 
     cluster_eventos = MarkerCluster().add_to(mapa_biblico)
@@ -269,12 +259,18 @@ if not st.session_state.modo_andarilho_ativo:
         coord = evento["coordenadas"]
         cor_marcador = "darkred" if evento.get("testamento") == "Antigo Testamento" else "cadetblue"
         
+        # O HTML do pop-up foi expandido para incluir o versículo completo de forma estilizada
         html_popup = f"""
-        <div style="font-family: Arial, sans-serif; width: 260px;">
+        <div style="font-family: Arial, sans-serif; width: 320px;">
             <h4 style="margin-bottom: 5px; color: #2C3E50; border-bottom: 1px solid #eee; padding-bottom: 5px;">{evento.get('evento', '')}</h4>
             <p style="margin: 4px 0; font-size: 13px;"><b>Local:</b> {evento.get('subregiao', '')}</p>
             <p style="margin: 4px 0; font-size: 13px;"><b>Envolvidos:</b> {evento.get('personagens', '')}</p>
-            <p style="margin: 4px 0; font-size: 13px;"><b>Livro:</b> <i>{evento.get('referencia', '')}</i></p>
+            <p style="margin: 4px 0; font-size: 13px;"><b>Referência:</b> <i>{evento.get('referencia', '')}</i></p>
+            
+            <div style="margin-top: 12px; margin-bottom: 12px; background-color: #fcfbf7; padding: 10px; border-left: 4px solid #d35400; border-radius: 2px;">
+                <p style="margin: 0; font-size: 13px; font-style: italic; color: #444; line-height: 1.5;">{evento.get('versiculo', 'Texto bíblico não disponível.')}</p>
+            </div>
+            
             <div style="margin-top: 10px; background-color: #f8f9fa; padding: 5px; border-radius: 4px;">
                 <p style="margin: 0; font-size: 11px; color: #7f8c8d;"><b>Geografia Atual:</b> {evento.get('local_atual', '')}</p>
             </div>
@@ -283,7 +279,7 @@ if not st.session_state.modo_andarilho_ativo:
         
         folium.Marker(
             location=coord,
-            popup=folium.Popup(html_popup, max_width=300),
+            popup=folium.Popup(html_popup, max_width=350),
             tooltip=evento.get('evento', 'Local'),
             icon=folium.Icon(color=cor_marcador, icon=evento.get('icone', 'info-sign'))
         ).add_to(cluster_eventos)
@@ -297,7 +293,6 @@ if not st.session_state.modo_andarilho_ativo:
     components.html(html_mapa, height=750)
 
 else:
-    # MODO ANDARILHO
     if not eventos_filtrados:
         st.warning("Nenhum evento corresponde à busca atual. Limpe a barra de pesquisa para retornar ao modo andarilho padrão.")
         html_modo_andarilho = f"""
