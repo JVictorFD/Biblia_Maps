@@ -21,7 +21,6 @@ st.markdown("""
             padding-right: 0rem;
         }
         
-        /* Arredondamento da borda aplicado a qualquer iframe renderizado */
         iframe {
             border-radius: 8px;
         }
@@ -138,6 +137,7 @@ with st.sidebar:
     
     st.header("Aparência")
     tema_sepia = st.toggle("Ativar Tema Pergaminho (Sépia)", value=True)
+    tema_delineado = st.toggle("Ativar Delineado do Mapa Atual", value=False)
     
     st.markdown("---")
     
@@ -167,7 +167,7 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.9.2 - Correção Interna do Filtro Visual")
+    st.caption("v1.10.0 - Delineado Geopolítico Atual")
 
 # --- LÓGICA DE FILTRAGEM MULTICRITÉRIOS ---
 eventos_filtrados = []
@@ -202,12 +202,23 @@ if not st.session_state.modo_andarilho_ativo:
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
 
+    # Criação da camada base do mapa
     mapa_biblico = folium.Map(
         location=st.session_state.coordenadas_foco, 
         zoom_start=st.session_state.zoom_foco, 
         tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}",
         attr="Esri"
     )
+
+    # Adiciona a camada transparente de delineado moderno, se o toggle estiver ligado
+    if tema_delineado:
+        folium.TileLayer(
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri",
+            name="Fronteiras Atuais",
+            overlay=True,
+            control=False
+        ).add_to(mapa_biblico)
 
     cluster_eventos = MarkerCluster().add_to(mapa_biblico)
 
@@ -234,10 +245,8 @@ if not st.session_state.modo_andarilho_ativo:
             icon=folium.Icon(color=cor_marcador, icon=evento.get('icone', 'info-sign'))
         ).add_to(cluster_eventos)
 
-    # Extrai o HTML puro do Folium
     html_mapa = mapa_biblico._repr_html_()
     
-    # Injeta o CSS diretamente DENTRO do iframe do mapa se o tema Sépia estiver ligado
     if tema_sepia:
         estilo_interno = "<style> html { filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95); } </style>"
         html_mapa = estilo_interno + html_mapa
