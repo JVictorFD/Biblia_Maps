@@ -20,14 +20,12 @@ def inicializar_banco():
     caminho_db = os.path.join(diretorio_atual, "biblia_maps_usuarios.db")
     conexao = sqlite3.connect(caminho_db)
     cursor = conexao.cursor()
-    # Tabela de Usuários
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             username TEXT PRIMARY KEY,
             password TEXT
         )
     """)
-    # Tabela do Devocional Guiado
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS diario_devocional (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,7 +137,7 @@ st.markdown("""
             margin-bottom: 10px;
         }
         
-        .diario-box {
+        .diario-box-side {
             background-color: #f8f9fa;
             padding: 12px;
             border-radius: 8px;
@@ -147,12 +145,44 @@ st.markdown("""
             margin-bottom: 10px;
             color: #2c3e50;
         }
+        
+        /* Estilização para o Modo Leitura do Devocional */
+        .leitura-devocional-card {
+            background-color: #fdfbf7;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 6px solid #d35400;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+        .leitura-devocional-card h3 {
+            color: #2C3E50;
+            margin-top: 0;
+            margin-bottom: 5px;
+            font-family: 'Georgia', serif;
+        }
+        .leitura-devocional-card p.data {
+            color: #7f8c8d;
+            font-size: 13px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .leitura-devocional-card p.texto {
+            font-size: 16px;
+            color: #333;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 # Gerenciamento de Estados na Sessão
 if 'modo_andarilho_ativo' not in st.session_state:
     st.session_state.modo_andarilho_ativo = False
+if 'modo_leitura_diario' not in st.session_state:
+    st.session_state.modo_leitura_diario = False
 if 'coordenadas_foco' not in st.session_state:
     st.session_state.coordenadas_foco = [31.7, 35.2]
 if 'zoom_foco' not in st.session_state:
@@ -192,7 +222,6 @@ with st.sidebar:
     st.title("📜 Bíblia Maps")
     st.write("Explore geograficamente os eventos históricos.")
     
-    # --- MÓDULO DE AUTENTICAÇÃO E DEVOCIONAL ---
     st.markdown("---")
     if not st.session_state.logged_in:
         st.subheader("🔐 Acesso ao Devocional Guiado")
@@ -227,31 +256,39 @@ with st.sidebar:
                         st.error("Nome de usuário já existe.")
     else:
         st.subheader(f"📖 Devocional de {st.session_state.username}")
+        
+        # Botão Principal para abrir o modo de leitura de tela cheia
+        if st.button("📖 Abrir Caderno de Reflexões", use_container_width=True, type="primary"):
+            st.session_state.modo_leitura_diario = True
+            st.session_state.modo_andarilho_ativo = False
+            st.rerun()
+            
         if st.button("Sair (Logout)", use_container_width=True):
             st.session_state.logged_in = False
             st.session_state.username = ""
             st.session_state.termo_pesquisa_rapida = ""
+            st.session_state.modo_leitura_diario = False
             st.rerun()
             
         cursor = conexao_db.cursor()
-        cursor.execute("SELECT evento_id, nome_evento, anotacao, data_hora FROM diario_devocional WHERE username=? ORDER BY id DESC", (st.session_state.username,))
+        cursor.execute("SELECT id, evento_id, nome_evento, anotacao, data_hora FROM diario_devocional WHERE username=? ORDER BY id DESC", (st.session_state.username,))
         registros_diario = cursor.fetchall()
         
         if registros_diario:
-            with st.expander("⭐ Meus Locais e Orações Favoritas", expanded=False):
-                for reg in registros_diario:
+            with st.expander("⭐ Últimos Favoritos Salvos", expanded=False):
+                for reg in registros_diario[:3]: # Mostra apenas os 3 mais recentes na barra lateral
                     st.markdown(f"""
-                    <div class="diario-box">
-                        <b>📍 {reg[1]}</b><br>
-                        <i><small>{reg[3]}</small></i><br>
-                        <span style="font-size: 13px;">"{reg[2]}"</span>
+                    <div class="diario-box-side">
+                        <b>📍 {reg[2]}</b><br>
+                        <i><small>{reg[4]}</small></i>
                     </div>
                     """, unsafe_allow_html=True)
-                    if st.button(f"Reviver a jornada em: {reg[1]}", key=f"btn_{reg[3]}"):
-                        st.session_state.termo_pesquisa_rapida = reg[1]
+                    if st.button(f"🗺️ Ir para: {reg[2]}", key=f"side_btn_{reg[0]}"):
+                        st.session_state.termo_pesquisa_rapida = reg[2]
+                        st.session_state.modo_leitura_diario = False
                         st.rerun()
         else:
-            st.info("Seu Devocional Guiado está vazio. Escolha um local e salve suas reflexões!")
+            st.info("Seu Devocional Guiado está vazio. Escolha um local no mapa e salve suas reflexões!")
 
     st.markdown("---")
     st.header("Aparência")
@@ -303,7 +340,7 @@ elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_ep
     st.session_state.coordenadas_foco = [31.7, 35.2]
     st.session_state.zoom_foco = 6
 
-# --- BARRA LATERAL (ITINERÁRIO E AÇÃO NO DEVOCIONAL ATUALIZADA) ---
+# --- BARRA LATERAL (AÇÃO E ITINERÁRIO) ---
 seguir_caminhada = False
 with st.sidebar:
     if filtro_personagem != "Todos" and len(eventos_filtrados) > 1:
@@ -317,12 +354,10 @@ with st.sidebar:
             for i, ev in enumerate(eventos_filtrados):
                 st.markdown(f"<div class='itinerario-box'><b>{i+1}. {ev.get('subregiao', 'Local')}</b><br><small>{ev.get('evento', '')}</small></div>", unsafe_allow_html=True)
                 
-    # --- NOVA AÇÃO DE SALVAR NO DEVOCIONAL (SELEÇÃO DIRETA) ---
-    if st.session_state.logged_in:
+    if st.session_state.logged_in and not st.session_state.modo_leitura_diario:
         st.markdown("---")
         st.subheader("⭐ Salvar no Devocional")
         if eventos_filtrados:
-            # Mapeia os eventos filtrados para o usuário escolher o que ele está lendo no mapa
             opcoes_eventos = {e.get('evento'): e for e in eventos_filtrados}
             evento_selecionado_nome = st.selectbox("Selecione o local para salvar:", list(opcoes_eventos.keys()))
             evento_focado = opcoes_eventos[evento_selecionado_nome]
@@ -348,6 +383,7 @@ with st.sidebar:
     if not st.session_state.modo_andarilho_ativo:
         if st.button("🚶‍♂️ Ativar Modo Andarilho (Cena)", use_container_width=True, type="primary"):
             st.session_state.modo_andarilho_ativo = True
+            st.session_state.modo_leitura_diario = False
             st.rerun()
     else:
         if st.button("🌍 Voltar ao Mapa Global", use_container_width=True):
@@ -355,10 +391,49 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.15.0 - Seleção Universal para Devocional")
+    st.caption("v1.16.0 - Leitura em Tela Cheia do Diário")
 
 # --- CONTEÚDO PRINCIPAL ---
-if not st.session_state.modo_andarilho_ativo:
+
+# 1. RENDERIZA MODO DE LEITURA DO DEVOCIONAL (TELA CHEIA)
+if st.session_state.modo_leitura_diario:
+    col_titulo, col_btn = st.columns([4, 1])
+    with col_titulo:
+        st.header(f"📖 Caderno Devocional de {st.session_state.username}")
+    with col_btn:
+        st.write("") # Espaçamento
+        if st.button("⬅️ Voltar ao Mapa"):
+            st.session_state.modo_leitura_diario = False
+            st.rerun()
+            
+    st.markdown("---")
+    
+    cursor = conexao_db.cursor()
+    cursor.execute("SELECT id, data_hora, nome_evento, anotacao FROM diario_devocional WHERE username=? ORDER BY id DESC", (st.session_state.username,))
+    todos_registros = cursor.fetchall()
+    
+    if not todos_registros:
+        st.info("Você ainda não salvou nenhuma reflexão. Retorne ao mapa, selecione um local sagrado e comece a escrever o seu diário!")
+    else:
+        for reg in todos_registros:
+            id_reg, data_reg, evento_reg, texto_reg = reg
+            st.markdown(f"""
+                <div class="leitura-devocional-card">
+                    <h3>📍 {evento_reg}</h3>
+                    <p class="data">Salvo em: {data_reg}</p>
+                    <p class="texto">"{texto_reg}"</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Botão interativo para pular da leitura direto para o mapa
+            if st.button(f"🌍 Ver '{evento_reg}' no Mapa", key=f"ler_mapa_btn_{id_reg}"):
+                st.session_state.termo_pesquisa_rapida = evento_reg
+                st.session_state.modo_leitura_diario = False
+                st.rerun()
+            st.write("") # Espaço entre os blocos
+
+# 2. RENDERIZA MAPA GLOBAL (SE MODO ANDARILHO E MODO DIÁRIO ESTIVEREM DESLIGADOS)
+elif not st.session_state.modo_andarilho_ativo:
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
 
@@ -426,6 +501,7 @@ if not st.session_state.modo_andarilho_ativo:
 
     components.html(html_mapa, height=750)
 
+# 3. RENDERIZA MODO ANDARILHO 2D
 else:
     if not eventos_filtrados:
         st.warning("Nenhum evento corresponde à busca atual. Limpe a barra de pesquisa para retornar ao modo andarilho padrão.")
