@@ -132,7 +132,6 @@ with st.sidebar:
     st.write("Explore os eventos históricos da Bíblia de forma interativa.")
     
     st.header("Aparência")
-    # Novo Toggle para alternar os visuais do mapa
     tema_sepia = st.toggle("Ativar Tema Pergaminho (Sépia)", value=True)
     
     st.markdown("---")
@@ -163,14 +162,15 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.9.0 - Alternância Dinâmica de Temas")
+    st.caption("v1.9.1 - Correção do Toggle de Temas")
 
 # --- INJEÇÃO CONDICIONAL DE CSS DO MAPA ---
+# A diretiva !important obriga o navegador a anular qualquer estilo em cache
 if tema_sepia:
     st.markdown("""
         <style>
             iframe[title="folium_map"] {
-                filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95);
+                filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95) !important;
                 border-radius: 8px;
             }
         </style>
@@ -179,6 +179,7 @@ else:
     st.markdown("""
         <style>
             iframe[title="folium_map"] {
+                filter: none !important; 
                 border-radius: 8px;
             }
         </style>
