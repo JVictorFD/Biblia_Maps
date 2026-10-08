@@ -11,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Injeção de CSS Base (Layout, Tela Cheia e Legendas Flutuantes)
+# Injeção de CSS Base (Layout, Tela Cheia, Bordas e Legendas Flutuantes)
 st.markdown("""
     <style>
         .block-container {
@@ -19,6 +19,11 @@ st.markdown("""
             padding-bottom: 0rem;
             padding-left: 0rem;
             padding-right: 0rem;
+        }
+        
+        /* Arredondamento da borda aplicado a qualquer iframe renderizado */
+        iframe {
+            border-radius: 8px;
         }
         
         .andarilho-container {
@@ -162,28 +167,7 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.9.1 - Correção do Toggle de Temas")
-
-# --- INJEÇÃO CONDICIONAL DE CSS DO MAPA ---
-# A diretiva !important obriga o navegador a anular qualquer estilo em cache
-if tema_sepia:
-    st.markdown("""
-        <style>
-            iframe[title="folium_map"] {
-                filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95) !important;
-                border-radius: 8px;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-        <style>
-            iframe[title="folium_map"] {
-                filter: none !important; 
-                border-radius: 8px;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+    st.caption("v1.9.2 - Correção Interna do Filtro Visual")
 
 # --- LÓGICA DE FILTRAGEM MULTICRITÉRIOS ---
 eventos_filtrados = []
@@ -250,7 +234,15 @@ if not st.session_state.modo_andarilho_ativo:
             icon=folium.Icon(color=cor_marcador, icon=evento.get('icone', 'info-sign'))
         ).add_to(cluster_eventos)
 
-    components.html(mapa_biblico._repr_html_().replace("<iframe ", "<iframe title='folium_map' "), height=750)
+    # Extrai o HTML puro do Folium
+    html_mapa = mapa_biblico._repr_html_()
+    
+    # Injeta o CSS diretamente DENTRO do iframe do mapa se o tema Sépia estiver ligado
+    if tema_sepia:
+        estilo_interno = "<style> html { filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95); } </style>"
+        html_mapa = estilo_interno + html_mapa
+
+    components.html(html_mapa, height=750)
 
 else:
     if not eventos_filtrados:
