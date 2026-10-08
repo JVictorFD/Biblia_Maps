@@ -95,6 +95,15 @@ st.markdown("""
             color: #cbd5e1;
             line-height: 1.4;
         }
+        
+        /* Estilização extra para o itinerário lateral */
+        .itinerario-box {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 3px solid #e74c3c;
+            margin-bottom: 10px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -130,7 +139,7 @@ for e in eventos:
         personagens_brutos.extend(p_lista)
 personagens_unicos = ["Todos"] + sorted(list(set(personagens_brutos)))
 
-# --- BARRA LATERAL (FILTROS E NAVEGAÇÃO) ---
+# --- BARRA LATERAL (ENTRADAS DE FILTRO) ---
 with st.sidebar:
     st.title("📜 Bíblia Maps")
     st.write("Explore os eventos históricos da Bíblia de forma interativa.")
@@ -153,21 +162,6 @@ with st.sidebar:
     filtro_testamento = st.selectbox("Período (Testamento):", testamentos_unicos)
     filtro_epoca = st.selectbox("Época / Fase:", epocas_unicas)
     filtro_personagem = st.selectbox("Personagem Específico:", personagens_unicos)
-    
-    st.markdown("---")
-    
-    st.subheader("Modo Imersivo")
-    if not st.session_state.modo_andarilho_ativo:
-        if st.button("🚶‍♂️ Ativar Modo Andarilho (Cena)", use_container_width=True, type="primary"):
-            st.session_state.modo_andarilho_ativo = True
-            st.rerun()
-    else:
-        if st.button("🌍 Voltar ao Mapa Global", use_container_width=True):
-            st.session_state.modo_andarilho_ativo = False
-            st.rerun()
-            
-    st.markdown("---")
-    st.caption("v1.10.0 - Delineado Geopolítico Atual")
 
 # --- LÓGICA DE FILTRAGEM MULTICRITÉRIOS ---
 eventos_filtrados = []
@@ -190,12 +184,44 @@ for e in eventos:
     if match_testamento and match_epoca and match_personagem and match_busca:
         eventos_filtrados.append(e)
 
+# Redirecionamento de foco básico
 if len(eventos_filtrados) == 1:
     st.session_state.coordenadas_foco = eventos_filtrados[0]["coordenadas"]
     st.session_state.zoom_foco = 10
 elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_epoca == "Todas" and not termo_busca:
     st.session_state.coordenadas_foco = [31.7, 35.2]
     st.session_state.zoom_foco = 6
+
+# --- BARRA LATERAL (ITINERÁRIO E MODO IMERSIVO DYNAMIC) ---
+seguir_caminhada = False
+with st.sidebar:
+    # Lógica da nova funcionalidade "Seguir Caminhada"
+    if filtro_personagem != "Todos" and len(eventos_filtrados) > 1:
+        st.markdown("---")
+        st.subheader("🗺️ Rota Histórica")
+        
+        # Botão em destaque ativado dinamicamente
+        seguir_caminhada = st.toggle(f"🚶‍♂️ Seguir caminhada de {filtro_personagem}", value=False)
+        
+        if seguir_caminhada:
+            st.info(f"Itinerário mapeado ({len(eventos_filtrados)} locais):")
+            # Gera a lista estilo Google Maps
+            for i, ev in enumerate(eventos_filtrados):
+                st.markdown(f"<div class='itinerario-box'><b>{i+1}. {ev.get('subregiao', 'Local')}</b><br><small>{ev.get('evento', '')}</small></div>", unsafe_allow_html=True)
+                
+    st.markdown("---")
+    st.subheader("Modo Imersivo")
+    if not st.session_state.modo_andarilho_ativo:
+        if st.button("🚶‍♂️ Ativar Modo Andarilho (Cena)", use_container_width=True, type="primary"):
+            st.session_state.modo_andarilho_ativo = True
+            st.rerun()
+    else:
+        if st.button("🌍 Voltar ao Mapa Global", use_container_width=True):
+            st.session_state.modo_andarilho_ativo = False
+            st.rerun()
+            
+    st.markdown("---")
+    st.caption("v1.12.0 - Seguir Caminhada Interativa")
 
 # --- CONTEÚDO PRINCIPAL ---
 if not st.session_state.modo_andarilho_ativo:
@@ -210,7 +236,7 @@ if not st.session_state.modo_andarilho_ativo:
         attr="Esri"
     )
 
-    # Adiciona a camada transparente de delineado moderno, se o toggle estiver ligado
+    # Adiciona a camada de fronteiras se solicitada
     if tema_delineado:
         folium.TileLayer(
             tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
@@ -219,6 +245,23 @@ if not st.session_state.modo_andarilho_ativo:
             overlay=True,
             control=False
         ).add_to(mapa_biblico)
+
+    # Lógica de renderização da Linha de Caminhada (Nova Funcionalidade)
+    if seguir_caminhada and len(eventos_filtrados) > 1:
+        coords_rota = [evento["coordenadas"] for evento in eventos_filtrados]
+        
+        # Desenha a rota tracejada
+        folium.PolyLine(
+            coords_rota,
+            color="#e74c3c", # Vermelho histórico
+            weight=3,
+            opacity=0.8,
+            dash_array="10",
+            tooltip=f"Jornada de {filtro_personagem}"
+        ).add_to(mapa_biblico)
+        
+        # Faz a câmera do mapa enquadrar automaticamente a rota completa
+        mapa_biblico.fit_bounds(coords_rota)
 
     cluster_eventos = MarkerCluster().add_to(mapa_biblico)
 
@@ -254,6 +297,7 @@ if not st.session_state.modo_andarilho_ativo:
     components.html(html_mapa, height=750)
 
 else:
+    # MODO ANDARILHO
     if not eventos_filtrados:
         st.warning("Nenhum evento corresponde à busca atual. Limpe a barra de pesquisa para retornar ao modo andarilho padrão.")
         html_modo_andarilho = f"""
