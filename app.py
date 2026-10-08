@@ -233,7 +233,6 @@ with st.sidebar:
             st.session_state.termo_pesquisa_rapida = ""
             st.rerun()
             
-        # Exibe os favoritos salvos no devocional
         cursor = conexao_db.cursor()
         cursor.execute("SELECT evento_id, nome_evento, anotacao, data_hora FROM diario_devocional WHERE username=? ORDER BY id DESC", (st.session_state.username,))
         registros_diario = cursor.fetchall()
@@ -248,12 +247,11 @@ with st.sidebar:
                         <span style="font-size: 13px;">"{reg[2]}"</span>
                     </div>
                     """, unsafe_allow_html=True)
-                    # Botão rápido para rever o local no mapa
                     if st.button(f"Reviver a jornada em: {reg[1]}", key=f"btn_{reg[3]}"):
                         st.session_state.termo_pesquisa_rapida = reg[1]
                         st.rerun()
         else:
-            st.info("Seu Devocional Guiado está vazio. Busque por um local e salve suas reflexões!")
+            st.info("Seu Devocional Guiado está vazio. Escolha um local e salve suas reflexões!")
 
     st.markdown("---")
     st.header("Aparência")
@@ -262,7 +260,6 @@ with st.sidebar:
     
     st.markdown("---")
     st.header("Pesquisa Avançada")
-    # Usa o termo do botão do devocional caso clicado, senão usa o input livre
     valor_busca = st.session_state.termo_pesquisa_rapida if st.session_state.termo_pesquisa_rapida else ""
     termo_busca = st.text_input(
         "Buscar nomes, capítulos ou combine com '+':",
@@ -270,7 +267,7 @@ with st.sidebar:
         placeholder="Ex: João, Lucas 2, Pedro+Jesus"
     )
     if st.session_state.termo_pesquisa_rapida and termo_busca != st.session_state.termo_pesquisa_rapida:
-        st.session_state.termo_pesquisa_rapida = "" # Limpa se o usuário digitar algo novo
+        st.session_state.termo_pesquisa_rapida = "" 
     
     st.markdown("---")
     st.header("Filtros Categóricos")
@@ -306,7 +303,7 @@ elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_ep
     st.session_state.coordenadas_foco = [31.7, 35.2]
     st.session_state.zoom_foco = 6
 
-# --- BARRA LATERAL (ITINERÁRIO E AÇÃO NO DEVOCIONAL) ---
+# --- BARRA LATERAL (ITINERÁRIO E AÇÃO NO DEVOCIONAL ATUALIZADA) ---
 seguir_caminhada = False
 with st.sidebar:
     if filtro_personagem != "Todos" and len(eventos_filtrados) > 1:
@@ -320,24 +317,31 @@ with st.sidebar:
             for i, ev in enumerate(eventos_filtrados):
                 st.markdown(f"<div class='itinerario-box'><b>{i+1}. {ev.get('subregiao', 'Local')}</b><br><small>{ev.get('evento', '')}</small></div>", unsafe_allow_html=True)
                 
-    # --- AÇÃO DE SALVAR NO DEVOCIONAL SE O USUÁRIO ACHOU UM LOCAL ESPECÍFICO ---
-    if st.session_state.logged_in and len(eventos_filtrados) == 1:
+    # --- NOVA AÇÃO DE SALVAR NO DEVOCIONAL (SELEÇÃO DIRETA) ---
+    if st.session_state.logged_in:
         st.markdown("---")
-        evento_focado = eventos_filtrados[0]
         st.subheader("⭐ Salvar no Devocional")
-        anotacao = st.text_area("Sua reflexão ou oração sobre este lugar:", placeholder=f"O que Deus falou com você em {evento_focado.get('evento')}?")
-        if st.button("Salvar Reflexão", type="primary", use_container_width=True):
-            if anotacao:
-                cursor = conexao_db.cursor()
-                data_atual = datetime.now().strftime('%d/%m/%Y %H:%M')
-                cursor.execute("""
-                    INSERT INTO diario_devocional (username, evento_id, nome_evento, anotacao, data_hora)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (st.session_state.username, evento_focado.get('id', evento_focado.get('evento')), evento_focado.get('evento'), anotacao, data_atual))
-                conexao_db.commit()
-                st.success("Adicionado aos favoritos do seu Devocional Guiado!")
-            else:
-                st.warning("Escreva algo antes de salvar.")
+        if eventos_filtrados:
+            # Mapeia os eventos filtrados para o usuário escolher o que ele está lendo no mapa
+            opcoes_eventos = {e.get('evento'): e for e in eventos_filtrados}
+            evento_selecionado_nome = st.selectbox("Selecione o local para salvar:", list(opcoes_eventos.keys()))
+            evento_focado = opcoes_eventos[evento_selecionado_nome]
+            
+            anotacao = st.text_area("Sua reflexão ou oração sobre este lugar:", placeholder=f"O que Deus falou com você em {evento_focado.get('evento')}?")
+            if st.button("Salvar Reflexão", type="primary", use_container_width=True):
+                if anotacao:
+                    cursor = conexao_db.cursor()
+                    data_atual = datetime.now().strftime('%d/%m/%Y %H:%M')
+                    cursor.execute("""
+                        INSERT INTO diario_devocional (username, evento_id, nome_evento, anotacao, data_hora)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (st.session_state.username, evento_focado.get('id', evento_focado.get('evento')), evento_focado.get('evento'), anotacao, data_atual))
+                    conexao_db.commit()
+                    st.success(f"{evento_focado.get('evento')} salvo nos favoritos!")
+                else:
+                    st.warning("Escreva algo antes de salvar.")
+        else:
+            st.info("Nenhum evento disponível para salvar com a busca atual.")
 
     st.markdown("---")
     st.subheader("Modo Imersivo")
@@ -351,7 +355,7 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.14.1 - Devocional Guiado & Auth")
+    st.caption("v1.15.0 - Seleção Universal para Devocional")
 
 # --- CONTEÚDO PRINCIPAL ---
 if not st.session_state.modo_andarilho_ativo:
@@ -467,4 +471,3 @@ else:
         </div>
         """
         components.html(html_modo_andarilho, height=750)
-        
