@@ -1,6 +1,4 @@
 import streamlit as st
-import folium
-from folium.plugins import MarkerCluster
 import streamlit.components.v1 as components
 import json
 import os
@@ -44,7 +42,7 @@ conexao_db = inicializar_banco()
 def hash_senha(senha):
     return hashlib.sha256(senha.encode()).hexdigest()
 
-# Injeção de CSS Base
+# Injeção de CSS Base para a Interface Streamlit
 st.markdown("""
     <style>
         .block-container {
@@ -52,10 +50,6 @@ st.markdown("""
             padding-bottom: 0rem;
             padding-left: 0rem;
             padding-right: 0rem;
-        }
-        
-        iframe {
-            border-radius: 8px;
         }
         
         .andarilho-container {
@@ -146,7 +140,6 @@ st.markdown("""
             color: #2c3e50;
         }
         
-        /* Estilização para o Modo Leitura do Devocional */
         .leitura-devocional-card {
             background-color: #fdfbf7;
             padding: 25px;
@@ -186,7 +179,7 @@ if 'modo_leitura_diario' not in st.session_state:
 if 'coordenadas_foco' not in st.session_state:
     st.session_state.coordenadas_foco = [31.7, 35.2]
 if 'zoom_foco' not in st.session_state:
-    st.session_state.zoom_foco = 6
+    st.session_state.zoom_foco = 6000000 # Altura de câmera do Cesium (em metros)
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'username' not in st.session_state:
@@ -220,7 +213,7 @@ personagens_unicos = ["Todos"] + sorted(list(set(personagens_brutos)))
 # --- BARRA LATERAL ---
 with st.sidebar:
     st.title("📜 Bíblia Maps")
-    st.write("Explore geograficamente os eventos históricos.")
+    st.write("Explore geograficamente os eventos históricos em 3D.")
     
     st.markdown("---")
     if not st.session_state.logged_in:
@@ -257,7 +250,6 @@ with st.sidebar:
     else:
         st.subheader(f"📖 Devocional de {st.session_state.username}")
         
-        # Botão Principal para abrir o modo de leitura de tela cheia
         if st.button("📖 Abrir Caderno de Reflexões", use_container_width=True, type="primary"):
             st.session_state.modo_leitura_diario = True
             st.session_state.modo_andarilho_ativo = False
@@ -276,7 +268,7 @@ with st.sidebar:
         
         if registros_diario:
             with st.expander("⭐ Últimos Favoritos Salvos", expanded=False):
-                for reg in registros_diario[:3]: # Mostra apenas os 3 mais recentes na barra lateral
+                for reg in registros_diario[:3]:
                     st.markdown(f"""
                     <div class="diario-box-side">
                         <b>📍 {reg[2]}</b><br>
@@ -288,10 +280,10 @@ with st.sidebar:
                         st.session_state.modo_leitura_diario = False
                         st.rerun()
         else:
-            st.info("Seu Devocional Guiado está vazio. Escolha um local no mapa e salve suas reflexões!")
+            st.info("Seu Devocional Guiado está vazio. Escolha um local no mapa 3D e salve suas reflexões!")
 
     st.markdown("---")
-    st.header("Aparência")
+    st.header("Aparência do Globo 3D")
     tema_sepia = st.toggle("Ativar Tema Pergaminho (Sépia)", value=True)
     tema_delineado = st.toggle("Ativar Delineado do Mapa Atual", value=False)
     
@@ -333,12 +325,13 @@ for e in eventos:
     if match_testamento and match_epoca and match_personagem and match_busca:
         eventos_filtrados.append(e)
 
+# Controle adaptado do ZOOM dinâmico focado em Câmera de Altitude (CesiumJS)
 if len(eventos_filtrados) == 1:
     st.session_state.coordenadas_foco = eventos_filtrados[0]["coordenadas"]
-    st.session_state.zoom_foco = 10
+    st.session_state.zoom_foco = 300000  # Zoom muito próximo da superfície (cidade)
 elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_epoca == "Todas" and not termo_busca:
     st.session_state.coordenadas_foco = [31.7, 35.2]
-    st.session_state.zoom_foco = 6
+    st.session_state.zoom_foco = 6000000 # Visão orbital (mostrando África/Oriente Médio)
 
 # --- BARRA LATERAL (AÇÃO E ITINERÁRIO) ---
 seguir_caminhada = False
@@ -391,7 +384,7 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.16.0 - Leitura em Tela Cheia do Diário")
+    st.caption("v1.17.0 - Integração CesiumJS (Globo Interativo 3D)")
 
 # --- CONTEÚDO PRINCIPAL ---
 
@@ -401,8 +394,8 @@ if st.session_state.modo_leitura_diario:
     with col_titulo:
         st.header(f"📖 Caderno Devocional de {st.session_state.username}")
     with col_btn:
-        st.write("") # Espaçamento
-        if st.button("⬅️ Voltar ao Mapa"):
+        st.write("") 
+        if st.button("⬅️ Voltar ao Globo 3D"):
             st.session_state.modo_leitura_diario = False
             st.rerun()
             
@@ -425,81 +418,171 @@ if st.session_state.modo_leitura_diario:
                 </div>
             """, unsafe_allow_html=True)
             
-            # Botão interativo para pular da leitura direto para o mapa
-            if st.button(f"🌍 Ver '{evento_reg}' no Mapa", key=f"ler_mapa_btn_{id_reg}"):
+            if st.button(f"🌍 Ver '{evento_reg}' no Globo", key=f"ler_mapa_btn_{id_reg}"):
                 st.session_state.termo_pesquisa_rapida = evento_reg
                 st.session_state.modo_leitura_diario = False
                 st.rerun()
-            st.write("") # Espaço entre os blocos
+            st.write("") 
 
-# 2. RENDERIZA MAPA GLOBAL (SE MODO ANDARILHO E MODO DIÁRIO ESTIVEREM DESLIGADOS)
+# 2. RENDERIZA GLOBO INTERATIVO 3D (CESIUMJS)
 elif not st.session_state.modo_andarilho_ativo:
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
 
-    mapa_biblico = folium.Map(
-        location=st.session_state.coordenadas_foco, 
-        zoom_start=st.session_state.zoom_foco, 
-        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}",
-        attr="Esri"
-    )
-
-    if tema_delineado:
-        folium.TileLayer(
-            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-            attr="Esri",
-            name="Fronteiras Atuais",
-            overlay=True,
-            control=False
-        ).add_to(mapa_biblico)
-
-    if seguir_caminhada and len(eventos_filtrados) > 1:
-        coords_rota = [evento["coordenadas"] for evento in eventos_filtrados]
-        folium.PolyLine(
-            coords_rota,
-            color="#e74c3c",
-            weight=3,
-            opacity=0.8,
-            dash_array="10",
-            tooltip=f"Jornada de {filtro_personagem}"
-        ).add_to(mapa_biblico)
-        mapa_biblico.fit_bounds(coords_rota)
-
-    cluster_eventos = MarkerCluster().add_to(mapa_biblico)
-
-    for evento in eventos_filtrados:
-        coord = evento["coordenadas"]
-        cor_marcador = "darkred" if evento.get("testamento") == "Antigo Testamento" else "cadetblue"
-        
-        html_popup = f"""
-        <div style="font-family: Arial, sans-serif; width: 320px;">
-            <h4 style="margin-bottom: 5px; color: #2C3E50; border-bottom: 1px solid #eee; padding-bottom: 5px;">{evento.get('evento', '')}</h4>
-            <p style="margin: 4px 0; font-size: 13px;"><b>Local:</b> {evento.get('subregiao', '')}</p>
-            <p style="margin: 4px 0; font-size: 13px;"><b>Envolvidos:</b> {evento.get('personagens', '')}</p>
-            <p style="margin: 4px 0; font-size: 13px;"><b>Referência:</b> <i>{evento.get('referencia', '')}</i></p>
-            <div style="margin-top: 12px; margin-bottom: 12px; background-color: #fcfbf7; padding: 10px; border-left: 4px solid #d35400; border-radius: 2px;">
-                <p style="margin: 0; font-size: 13px; font-style: italic; color: #444; line-height: 1.5;">{evento.get('versiculo', 'Texto bíblico não disponível.')}</p>
-            </div>
-            <div style="margin-top: 10px; background-color: #f8f9fa; padding: 5px; border-radius: 4px;">
-                <p style="margin: 0; font-size: 11px; color: #7f8c8d;"><b>Geografia Atual:</b> {evento.get('local_atual', '')}</p>
-            </div>
-        </div>
-        """
-        
-        folium.Marker(
-            location=coord,
-            popup=folium.Popup(html_popup, max_width=350),
-            tooltip=evento.get('evento', 'Local'),
-            icon=folium.Icon(color=cor_marcador, icon=evento.get('icone', 'info-sign'))
-        ).add_to(cluster_eventos)
-
-    html_mapa = mapa_biblico._repr_html_()
+    # Injeta Sépia via CSS diretamente no Canvas 3D do Cesium
+    filtro_css = "filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95);" if tema_sepia else "filter: none;"
     
-    if tema_sepia:
-        estilo_interno = "<style> html { filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95); } </style>"
-        html_mapa = estilo_interno + html_mapa
+    # Camada transparente de fronteiras modernas
+    javascript_delineado = ""
+    if tema_delineado:
+        javascript_delineado = """
+        viewer.imageryLayers.addImageryProvider(new Cesium.ArcGisMapServerImageryProvider({
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer'
+        }));
+        """
 
-    components.html(html_mapa, height=750)
+    # Geração dos Pins e Pop-ups (Substituindo o antigo MarkerCluster)
+    javascript_markers = ""
+    for evento in eventos_filtrados:
+        lat, lon = evento["coordenadas"]
+        nome = evento.get('evento', '')
+        subregiao = evento.get('subregiao', '')
+        
+        # O HTML do pop-up formatado de forma limpa para injetar no JS
+        html_popup = f"""
+        <div style='font-family: Arial, sans-serif; padding: 5px;'>
+            <p style='margin: 4px 0; font-size: 13px; color: white;'><b>Local:</b> {subregiao}</p>
+            <p style='margin: 4px 0; font-size: 13px; color: white;'><b>Envolvidos:</b> {evento.get('personagens', '')}</p>
+            <p style='margin: 4px 0; font-size: 13px; color: white;'><b>Referência:</b> <i>{evento.get('referencia', '')}</i></p>
+            <div style='margin-top: 12px; margin-bottom: 12px; background-color: #fcfbf7; padding: 10px; border-left: 4px solid #d35400;'>
+                <p style='margin: 0; font-size: 13px; font-style: italic; color: #444;'>{evento.get('versiculo', 'Texto indisponível.')}</p>
+            </div>
+            <p style='margin: 0; font-size: 11px; color: #ccc;'><b>Geografia Atual:</b> {evento.get('local_atual', '')}</p>
+        </div>
+        """.replace('\n', '').replace('"', "'")
+        
+        # Renderiza a label flutuante igual a image_50a58e.jpg
+        javascript_markers += f"""
+        viewer.entities.add({{
+            name: "{nome}",
+            position: Cesium.Cartesian3.fromDegrees({lon}, {lat}),
+            point: {{ 
+                pixelSize: 12, 
+                color: Cesium.Color.fromCssColorString('#8B0000'), 
+                outlineColor: Cesium.Color.WHITE, 
+                outlineWidth: 2 
+            }},
+            label: {{ 
+                text: "{subregiao}", 
+                font: '12pt serif', 
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE, 
+                fillColor: Cesium.Color.WHITE,
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 4, 
+                verticalOrigin: Cesium.VerticalOrigin.BOTTOM, 
+                pixelOffset: new Cesium.Cartesian2(0, -15) 
+            }},
+            description: "{html_popup}"
+        }});
+        """
+
+    # Construção da PolyLine 3D curva que acompanha a esfera da Terra
+    javascript_polyline = ""
+    if seguir_caminhada and len(eventos_filtrados) > 1:
+        js_coords = []
+        for e in eventos_filtrados:
+            js_coords.extend([e["coordenadas"][1], e["coordenadas"][0]]) # O Cesium exige [Lon, Lat] linear
+        js_coords_str = ", ".join(map(str, js_coords))
+        
+        javascript_polyline = f"""
+        viewer.entities.add({{
+            polyline: {{
+                positions: Cesium.Cartesian3.fromDegreesArray([{js_coords_str}]),
+                width: 3,
+                material: new Cesium.PolylineDashMaterialProperty({{
+                    color: Cesium.Color.fromCssColorString('#e74c3c'),
+                    dashLength: 10.0
+                }})
+            }}
+        }});
+        """
+
+    # Controle inteligente de câmera espacial
+    lat_foco, lon_foco = st.session_state.coordenadas_foco
+    alt_foco = st.session_state.zoom_foco
+    
+    if seguir_caminhada and len(eventos_filtrados) > 1:
+        # Enquadra toda a jornada do personagem globalmente e afasta um pouco para não cortar as bordas
+        javascript_camera = "viewer.zoomTo(viewer.entities).then(function(){ viewer.camera.zoomOut(1000000); });"
+    else:
+        # Voa suavemente do espaço até a superfície
+        javascript_camera = f"""
+        viewer.camera.flyTo({{
+            destination: Cesium.Cartesian3.fromDegrees({lon_foco}, {lat_foco}, {alt_foco})
+        }});
+        """
+
+    # HTML Mestre do CesiumJS injetado como bloco nativo no Streamlit
+    html_cesium = f"""
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
+        <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+        <style>
+            html, body, #cesiumContainer {{
+                width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+                border-radius: 8px;
+            }}
+            .cesium-viewer canvas {{
+                {filtro_css}
+            }}
+            /* Oculta toda a poluição visual dos menus do Cesium mantendo o foco na imersão */
+            .cesium-viewer-toolbar, .cesium-viewer-animationContainer, 
+            .cesium-viewer-timelineContainer, .cesium-viewer-bottom,
+            .cesium-widget-credits {{
+                display: none !important;
+            }}
+            /* Ajusta a caixa de leitura para o estilo Bíblia Maps */
+            .cesium-infoBox {{
+                background: rgba(15, 23, 42, 0.95) !important;
+                border: 1px solid #fbbf24 !important;
+                border-radius: 8px;
+            }}
+            .cesium-infoBox-title {{
+                background-color: #0d1117 !important;
+                color: #fbbf24 !important;
+            }}
+        </style>
+    </head>
+    <body>
+        <div id="cesiumContainer"></div>
+        <script>
+            const viewer = new Cesium.Viewer('cesiumContainer', {{
+                imageryProvider: new Cesium.ArcGisMapServerImageryProvider({{
+                    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer'
+                }}),
+                baseLayerPicker: false,
+                geocoder: false,
+                homeButton: false,
+                sceneModePicker: false,
+                navigationHelpButton: false,
+                animation: false,
+                timeline: false,
+                fullscreenButton: false,
+                infoBox: true
+            }});
+
+            {javascript_delineado}
+            {javascript_markers}
+            {javascript_polyline}
+            {javascript_camera}
+        </script>
+    </body>
+    </html>
+    """
+
+    components.html(html_cesium, height=750)
 
 # 3. RENDERIZA MODO ANDARILHO 2D
 else:
