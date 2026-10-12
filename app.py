@@ -285,7 +285,6 @@ with st.sidebar:
     st.markdown("---")
     st.header("Aparência do Globo 3D")
     
-    # MANTIDO O CONTROLE CONFORME EXIGIDO (value=False)
     tema_sepia = st.toggle("Ativar Tema Pergaminho (Sépia)", value=False)
     tema_delineado = st.toggle("Ativar Delineado do Mapa Atual", value=False)
     
@@ -385,7 +384,7 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.17.0 - Reversão CesiumJS LTS 1.104.0")
+    st.caption("v1.18.0 - Bíblia em Áudio In-App")
 
 # --- CONTEÚDO PRINCIPAL ---
 
@@ -426,8 +425,7 @@ if st.session_state.modo_leitura_diario:
 
 elif not st.session_state.modo_andarilho_ativo:
     
-    # AVISO DE FUNCIONAMENTO EXIGIDO PARA VALIDAÇÃO
-    st.info("🔄 Motor CesiumJS estabilizado na versão LTS (1.104.0). Verifique se o mapa em cores reais carregou perfeitamente no globo.")
+    st.info("🔊 Bíblia em Áudio ativada! Clique em um local no globo e aperte o botão de alto-falante no pop-up para ouvir a narração.")
 
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
@@ -445,24 +443,28 @@ elif not st.session_state.modo_andarilho_ativo:
     javascript_markers = ""
     for evento in eventos_filtrados:
         lat, lon = evento["coordenadas"]
-        nome = evento.get('evento', '')
-        subregiao = evento.get('subregiao', '')
+        nome_js = evento.get('evento', '').replace('"', '')
+        subregiao_js = evento.get('subregiao', '').replace('"', '')
+        
+        # Blindagem do texto para o motor Text-To-Speech do JavaScript não quebrar com pontuações soltas
+        versiculo_puro = evento.get('versiculo', 'Texto indisponível.').replace("'", "").replace('"', '').replace('\n', ' ').replace('\r', '')
         
         html_popup = f"""
-        <div style='font-family: Arial, sans-serif; padding: 5px;'>
-            <p style='margin: 4px 0; font-size: 13px; color: white;'><b>Local:</b> {subregiao}</p>
-            <p style='margin: 4px 0; font-size: 13px; color: white;'><b>Envolvidos:</b> {evento.get('personagens', '')}</p>
-            <p style='margin: 4px 0; font-size: 13px; color: white;'><b>Referência:</b> <i>{evento.get('referencia', '')}</i></p>
-            <div style='margin-top: 12px; margin-bottom: 12px; background-color: #fcfbf7; padding: 10px; border-left: 4px solid #d35400;'>
-                <p style='margin: 0; font-size: 13px; font-style: italic; color: #444;'>{evento.get('versiculo', 'Texto indisponível.')}</p>
+        <div style="font-family: Arial, sans-serif; padding: 5px;">
+            <p style="margin: 4px 0; font-size: 13px; color: white;"><b>Local:</b> {subregiao_js}</p>
+            <p style="margin: 4px 0; font-size: 13px; color: white;"><b>Envolvidos:</b> {evento.get('personagens', '')}</p>
+            <p style="margin: 4px 0; font-size: 13px; color: white;"><b>Referência:</b> <i>{evento.get('referencia', '')}</i></p>
+            <div style="margin-top: 12px; margin-bottom: 12px; background-color: #fcfbf7; padding: 10px; border-left: 4px solid #d35400;">
+                <button onclick="var msg = new SpeechSynthesisUtterance('{versiculo_puro}'); msg.lang='pt-BR'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(msg);" style="float: right; background: none; border: none; cursor: pointer; font-size: 16px;" title="Ouvir Narração">🔊</button>
+                <p style="margin: 0; font-size: 13px; font-style: italic; color: #444;">{evento.get('versiculo', 'Texto indisponível.')}</p>
             </div>
-            <p style='margin: 0; font-size: 11px; color: #ccc;'><b>Geografia Atual:</b> {evento.get('local_atual', '')}</p>
+            <p style="margin: 0; font-size: 11px; color: #ccc;"><b>Geografia Atual:</b> {evento.get('local_atual', '')}</p>
         </div>
-        """.replace('\n', '').replace('"', "'")
+        """
         
         javascript_markers += f"""
         viewer.entities.add({{
-            name: "{nome}",
+            name: "{nome_js}",
             position: Cesium.Cartesian3.fromDegrees({lon}, {lat}),
             point: {{ 
                 pixelSize: 12, 
@@ -471,7 +473,7 @@ elif not st.session_state.modo_andarilho_ativo:
                 outlineWidth: 2 
             }},
             label: {{ 
-                text: "{subregiao}", 
+                text: "{subregiao_js}", 
                 font: '12pt serif', 
                 style: Cesium.LabelStyle.FILL_AND_OUTLINE, 
                 fillColor: Cesium.Color.WHITE,
@@ -480,7 +482,7 @@ elif not st.session_state.modo_andarilho_ativo:
                 verticalOrigin: Cesium.VerticalOrigin.BOTTOM, 
                 pixelOffset: new Cesium.Cartesian2(0, -15) 
             }},
-            description: "{html_popup}"
+            description: `{html_popup}`
         }});
         """
 
@@ -516,7 +518,6 @@ elif not st.session_state.modo_andarilho_ativo:
         }});
         """
 
-    # HTML Mestre - Engine substituída para a versão estável LTS (1.104.0) via Cloudflare
     html_cesium = f"""
     <!DOCTYPE html>
     <html lang="pt-br">
@@ -554,7 +555,7 @@ elif not st.session_state.modo_andarilho_ativo:
             Cesium.Ion.defaultAccessToken = '';
 
             const viewer = new Cesium.Viewer('cesiumContainer', {{
-                // Usando a sintaxe síncrona original que funciona perfeitamente nesta versão
+                // Mantida a arquitetura LTS síncrona que gerou o mapa com sucesso
                 imageryProvider: new Cesium.ArcGisMapServerImageryProvider({{
                     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer'
                 }}),
@@ -613,10 +614,14 @@ else:
                 img_base64 = base64.b64encode(img_file.read()).decode()
             tag_imagem = f'<img src="data:image/jpeg;base64,{img_base64}" alt="{nome_evento}">'
 
+        # Motor TTS injetado também no Modo Andarilho
+        texto_limpo = texto_versiculo.replace("'", "").replace('"', '').replace('\n', ' ').replace('\r', '')
+
         html_modo_andarilho = f"""
         <div class="andarilho-container">
             {tag_imagem}
             <div class="creditos-legenda">
+                <button onclick="var msg = new SpeechSynthesisUtterance('{texto_limpo}'); msg.lang='pt-BR'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(msg);" style="float: right; background: rgba(0,0,0,0.5); border: 1px solid #fbbf24; border-radius: 50%; padding: 8px; cursor: pointer; font-size: 18px; color: white;" title="Ouvir Versículo">🔊</button>
                 <h2>📍 {nome_evento}</h2>
                 <p class="sub"><b>Região:</b> {subregiao}</p>
                 <blockquote>{texto_versiculo}</blockquote>
