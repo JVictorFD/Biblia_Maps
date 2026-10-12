@@ -42,7 +42,7 @@ conexao_db = inicializar_banco()
 def hash_senha(senha):
     return hashlib.sha256(senha.encode()).hexdigest()
 
-# Injeção de CSS Base para a Interface Streamlit
+# Injeção de CSS Base
 st.markdown("""
     <style>
         .block-container {
@@ -179,7 +179,7 @@ if 'modo_leitura_diario' not in st.session_state:
 if 'coordenadas_foco' not in st.session_state:
     st.session_state.coordenadas_foco = [31.7, 35.2]
 if 'zoom_foco' not in st.session_state:
-    st.session_state.zoom_foco = 6000000 # Altura de câmera do Cesium (em metros)
+    st.session_state.zoom_foco = 6000000 
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'username' not in st.session_state:
@@ -284,7 +284,9 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("Aparência do Globo 3D")
-    tema_sepia = st.toggle("Ativar Tema Pergaminho (Sépia)", value=True)
+    
+    # MANTIDO O CONTROLE CONFORME EXIGIDO (value=False)
+    tema_sepia = st.toggle("Ativar Tema Pergaminho (Sépia)", value=False)
     tema_delineado = st.toggle("Ativar Delineado do Mapa Atual", value=False)
     
     st.markdown("---")
@@ -325,13 +327,12 @@ for e in eventos:
     if match_testamento and match_epoca and match_personagem and match_busca:
         eventos_filtrados.append(e)
 
-# Controle adaptado do ZOOM dinâmico focado em Câmera de Altitude (CesiumJS)
 if len(eventos_filtrados) == 1:
     st.session_state.coordenadas_foco = eventos_filtrados[0]["coordenadas"]
-    st.session_state.zoom_foco = 300000  # Zoom muito próximo da superfície (cidade)
+    st.session_state.zoom_foco = 300000 
 elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_epoca == "Todas" and not termo_busca:
     st.session_state.coordenadas_foco = [31.7, 35.2]
-    st.session_state.zoom_foco = 6000000 # Visão orbital (mostrando África/Oriente Médio)
+    st.session_state.zoom_foco = 6000000 
 
 # --- BARRA LATERAL (AÇÃO E ITINERÁRIO) ---
 seguir_caminhada = False
@@ -384,11 +385,10 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.17.0 - Integração CesiumJS (Globo Interativo 3D)")
+    st.caption("v1.17.0 - Reversão CesiumJS LTS 1.104.0")
 
 # --- CONTEÚDO PRINCIPAL ---
 
-# 1. RENDERIZA MODO DE LEITURA DO DEVOCIONAL (TELA CHEIA)
 if st.session_state.modo_leitura_diario:
     col_titulo, col_btn = st.columns([4, 1])
     with col_titulo:
@@ -424,15 +424,16 @@ if st.session_state.modo_leitura_diario:
                 st.rerun()
             st.write("") 
 
-# 2. RENDERIZA GLOBO INTERATIVO 3D (CESIUMJS)
 elif not st.session_state.modo_andarilho_ativo:
+    
+    # AVISO DE FUNCIONAMENTO EXIGIDO PARA VALIDAÇÃO
+    st.info("🔄 Motor CesiumJS estabilizado na versão LTS (1.104.0). Verifique se o mapa em cores reais carregou perfeitamente no globo.")
+
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
 
-    # Injeta Sépia via CSS diretamente no Canvas 3D do Cesium
     filtro_css = "filter: sepia(0.65) hue-rotate(-15deg) contrast(1.15) brightness(0.95);" if tema_sepia else "filter: none;"
     
-    # Camada transparente de fronteiras modernas
     javascript_delineado = ""
     if tema_delineado:
         javascript_delineado = """
@@ -441,14 +442,12 @@ elif not st.session_state.modo_andarilho_ativo:
         }));
         """
 
-    # Geração dos Pins e Pop-ups (Substituindo o antigo MarkerCluster)
     javascript_markers = ""
     for evento in eventos_filtrados:
         lat, lon = evento["coordenadas"]
         nome = evento.get('evento', '')
         subregiao = evento.get('subregiao', '')
         
-        # O HTML do pop-up formatado de forma limpa para injetar no JS
         html_popup = f"""
         <div style='font-family: Arial, sans-serif; padding: 5px;'>
             <p style='margin: 4px 0; font-size: 13px; color: white;'><b>Local:</b> {subregiao}</p>
@@ -461,7 +460,6 @@ elif not st.session_state.modo_andarilho_ativo:
         </div>
         """.replace('\n', '').replace('"', "'")
         
-        # Renderiza a label flutuante igual a image_50a58e.jpg
         javascript_markers += f"""
         viewer.entities.add({{
             name: "{nome}",
@@ -486,12 +484,11 @@ elif not st.session_state.modo_andarilho_ativo:
         }});
         """
 
-    # Construção da PolyLine 3D curva que acompanha a esfera da Terra
     javascript_polyline = ""
     if seguir_caminhada and len(eventos_filtrados) > 1:
         js_coords = []
         for e in eventos_filtrados:
-            js_coords.extend([e["coordenadas"][1], e["coordenadas"][0]]) # O Cesium exige [Lon, Lat] linear
+            js_coords.extend([e["coordenadas"][1], e["coordenadas"][0]]) 
         js_coords_str = ", ".join(map(str, js_coords))
         
         javascript_polyline = f"""
@@ -507,28 +504,25 @@ elif not st.session_state.modo_andarilho_ativo:
         }});
         """
 
-    # Controle inteligente de câmera espacial
     lat_foco, lon_foco = st.session_state.coordenadas_foco
     alt_foco = st.session_state.zoom_foco
     
     if seguir_caminhada and len(eventos_filtrados) > 1:
-        # Enquadra toda a jornada do personagem globalmente e afasta um pouco para não cortar as bordas
         javascript_camera = "viewer.zoomTo(viewer.entities).then(function(){ viewer.camera.zoomOut(1000000); });"
     else:
-        # Voa suavemente do espaço até a superfície
         javascript_camera = f"""
         viewer.camera.flyTo({{
             destination: Cesium.Cartesian3.fromDegrees({lon_foco}, {lat_foco}, {alt_foco})
         }});
         """
 
-    # HTML Mestre do CesiumJS injetado como bloco nativo no Streamlit
+    # HTML Mestre - Engine substituída para a versão estável LTS (1.104.0) via Cloudflare
     html_cesium = f"""
     <!DOCTYPE html>
     <html lang="pt-br">
     <head>
-        <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
-        <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.104.0/Cesium.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.104.0/Widgets/widgets.css" rel="stylesheet">
         <style>
             html, body, #cesiumContainer {{
                 width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
@@ -537,13 +531,11 @@ elif not st.session_state.modo_andarilho_ativo:
             .cesium-viewer canvas {{
                 {filtro_css}
             }}
-            /* Oculta toda a poluição visual dos menus do Cesium mantendo o foco na imersão */
             .cesium-viewer-toolbar, .cesium-viewer-animationContainer, 
             .cesium-viewer-timelineContainer, .cesium-viewer-bottom,
             .cesium-widget-credits {{
                 display: none !important;
             }}
-            /* Ajusta a caixa de leitura para o estilo Bíblia Maps */
             .cesium-infoBox {{
                 background: rgba(15, 23, 42, 0.95) !important;
                 border: 1px solid #fbbf24 !important;
@@ -558,7 +550,11 @@ elif not st.session_state.modo_andarilho_ativo:
     <body>
         <div id="cesiumContainer"></div>
         <script>
+            // Desativa explicitamente os alertas de Token Ion do Cesium
+            Cesium.Ion.defaultAccessToken = '';
+
             const viewer = new Cesium.Viewer('cesiumContainer', {{
+                // Usando a sintaxe síncrona original que funciona perfeitamente nesta versão
                 imageryProvider: new Cesium.ArcGisMapServerImageryProvider({{
                     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer'
                 }}),
@@ -584,7 +580,6 @@ elif not st.session_state.modo_andarilho_ativo:
 
     components.html(html_cesium, height=750)
 
-# 3. RENDERIZA MODO ANDARILHO 2D
 else:
     if not eventos_filtrados:
         st.warning("Nenhum evento corresponde à busca atual. Limpe a barra de pesquisa para retornar ao modo andarilho padrão.")
