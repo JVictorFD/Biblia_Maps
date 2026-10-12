@@ -284,7 +284,6 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("Aparência do Globo 3D")
-    
     tema_sepia = st.toggle("Ativar Tema Pergaminho (Sépia)", value=False)
     tema_delineado = st.toggle("Ativar Delineado do Mapa Atual", value=False)
     
@@ -384,7 +383,7 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.18.0 - Bíblia em Áudio In-App")
+    st.caption("v1.18.1 - Patch da Web Speech API (Bypass DOMPurify)")
 
 # --- CONTEÚDO PRINCIPAL ---
 
@@ -425,7 +424,7 @@ if st.session_state.modo_leitura_diario:
 
 elif not st.session_state.modo_andarilho_ativo:
     
-    st.info("🔊 Bíblia em Áudio ativada! Clique em um local no globo e aperte o botão de alto-falante no pop-up para ouvir a narração.")
+    st.info("🔊 Patch de Áudio aplicado! Teste clicar nos pop-ups do mapa ou no Modo Andarilho para ouvir a narração.")
 
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
@@ -446,17 +445,15 @@ elif not st.session_state.modo_andarilho_ativo:
         nome_js = evento.get('evento', '').replace('"', '')
         subregiao_js = evento.get('subregiao', '').replace('"', '')
         
-        # Blindagem do texto para o motor Text-To-Speech do JavaScript não quebrar com pontuações soltas
-        versiculo_puro = evento.get('versiculo', 'Texto indisponível.').replace("'", "").replace('"', '').replace('\n', ' ').replace('\r', '')
-        
+        # O HTML limpo APENAS COM ID, sem 'onclick' quebrando no DOMPurify
         html_popup = f"""
         <div style="font-family: Arial, sans-serif; padding: 5px;">
             <p style="margin: 4px 0; font-size: 13px; color: white;"><b>Local:</b> {subregiao_js}</p>
             <p style="margin: 4px 0; font-size: 13px; color: white;"><b>Envolvidos:</b> {evento.get('personagens', '')}</p>
             <p style="margin: 4px 0; font-size: 13px; color: white;"><b>Referência:</b> <i>{evento.get('referencia', '')}</i></p>
             <div style="margin-top: 12px; margin-bottom: 12px; background-color: #fcfbf7; padding: 10px; border-left: 4px solid #d35400;">
-                <button onclick="var msg = new SpeechSynthesisUtterance('{versiculo_puro}'); msg.lang='pt-BR'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(msg);" style="float: right; background: none; border: none; cursor: pointer; font-size: 16px;" title="Ouvir Narração">🔊</button>
-                <p style="margin: 0; font-size: 13px; font-style: italic; color: #444;">{evento.get('versiculo', 'Texto indisponível.')}</p>
+                <button id="btn-audio-cesium" style="float: right; background: none; border: none; cursor: pointer; font-size: 16px;" title="Ouvir Narração">🔊</button>
+                <p class="texto-versiculo-ler" style="margin: 0; font-size: 13px; font-style: italic; color: #444;">{evento.get('versiculo', 'Texto indisponível.')}</p>
             </div>
             <p style="margin: 0; font-size: 11px; color: #ccc;"><b>Geografia Atual:</b> {evento.get('local_atual', '')}</p>
         </div>
@@ -551,11 +548,9 @@ elif not st.session_state.modo_andarilho_ativo:
     <body>
         <div id="cesiumContainer"></div>
         <script>
-            // Desativa explicitamente os alertas de Token Ion do Cesium
             Cesium.Ion.defaultAccessToken = '';
 
             const viewer = new Cesium.Viewer('cesiumContainer', {{
-                // Mantida a arquitetura LTS síncrona que gerou o mapa com sucesso
                 imageryProvider: new Cesium.ArcGisMapServerImageryProvider({{
                     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer'
                 }}),
@@ -574,6 +569,40 @@ elif not st.session_state.modo_andarilho_ativo:
             {javascript_markers}
             {javascript_polyline}
             {javascript_camera}
+
+            // O SCRIPT MESTRE: Monitora os cliques do pop-up por fora do DOMPurify
+            viewer.selectedEntityChanged.addEventListener(function(entity) {{
+                if (entity && viewer.infoBox) {{
+                    // Espera meio segundo para garantir que a janela e o iframe interno foram montados na tela
+                    setTimeout(function() {{
+                        try {{
+                            var iframeDoc = viewer.infoBox.frame.contentDocument || viewer.infoBox.frame.contentWindow.document;
+                            if (iframeDoc) {{
+                                var btn = iframeDoc.getElementById('btn-audio-cesium');
+                                if (btn) {{
+                                    // Amarra o evento JavaScript dinamicamente, blindando contra os filtros do Cesium
+                                    btn.onclick = function() {{
+                                        var textoLocal = iframeDoc.querySelector('.texto-versiculo-ler').innerText;
+                                        var msg = new SpeechSynthesisUtterance(textoLocal);
+                                        msg.lang = 'pt-BR';
+                                        msg.rate = 1.0;
+                                        
+                                        // Usa o synth do parent iframe para impedir que o navegador bloqueie audios em sandboxes
+                                        var synth = window.speechSynthesis;
+                                        if (window.parent && window.parent.speechSynthesis) {{
+                                            synth = window.parent.speechSynthesis;
+                                        }}
+                                        synth.cancel();
+                                        synth.speak(msg);
+                                    }};
+                                }}
+                            }}
+                        }} catch(err) {{
+                            console.log('Falha ao injetar audio no Cesium: ', err);
+                        }}
+                    }}, 400);
+                }}
+            }});
         </script>
     </body>
     </html>
@@ -614,14 +643,22 @@ else:
                 img_base64 = base64.b64encode(img_file.read()).decode()
             tag_imagem = f'<img src="data:image/jpeg;base64,{img_base64}" alt="{nome_evento}">'
 
-        # Motor TTS injetado também no Modo Andarilho
-        texto_limpo = texto_versiculo.replace("'", "").replace('"', '').replace('\n', ' ').replace('\r', '')
-
+        # O botão do Modo Andarilho também foi refatorado para ler direto do DOM via DOM Traversal
         html_modo_andarilho = f"""
         <div class="andarilho-container">
             {tag_imagem}
             <div class="creditos-legenda">
-                <button onclick="var msg = new SpeechSynthesisUtterance('{texto_limpo}'); msg.lang='pt-BR'; window.speechSynthesis.cancel(); window.speechSynthesis.speak(msg);" style="float: right; background: rgba(0,0,0,0.5); border: 1px solid #fbbf24; border-radius: 50%; padding: 8px; cursor: pointer; font-size: 18px; color: white;" title="Ouvir Versículo">🔊</button>
+                <button onclick="
+                    try {{
+                        var texto = this.parentElement.querySelector('blockquote').innerText;
+                        var msg = new SpeechSynthesisUtterance(texto);
+                        msg.lang = 'pt-BR';
+                        var synth = window.speechSynthesis;
+                        if(window.parent && window.parent.speechSynthesis) {{ synth = window.parent.speechSynthesis; }}
+                        synth.cancel();
+                        synth.speak(msg);
+                    }} catch(e) {{ console.log(e); }}
+                " style="float: right; background: rgba(0,0,0,0.5); border: 1px solid #fbbf24; border-radius: 50%; padding: 8px; cursor: pointer; font-size: 18px; color: white;" title="Ouvir Versículo">🔊</button>
                 <h2>📍 {nome_evento}</h2>
                 <p class="sub"><b>Região:</b> {subregiao}</p>
                 <blockquote>{texto_versiculo}</blockquote>
