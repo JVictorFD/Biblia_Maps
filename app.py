@@ -42,7 +42,7 @@ conexao_db = inicializar_banco()
 def hash_senha(senha):
     return hashlib.sha256(senha.encode()).hexdigest()
 
-# Injeção de CSS Base (Removido o CSS do andarilho daqui, pois ele roda isolado no iframe)
+# Injeção de CSS Base
 st.markdown("""
     <style>
         .itinerario-box {
@@ -259,11 +259,13 @@ seguir_caminhada = False
 iniciar_animacao = False
 
 with st.sidebar:
-    if filtro_personagem != "Todos" and len(eventos_filtrados) > 1:
+    # A TRAVA FOI REMOVIDA: Agora basta ter mais de 1 ponto no mapa para a opção aparecer!
+    if len(eventos_filtrados) > 1:
         st.markdown("---")
         st.subheader("🗺️ Rota Histórica")
         
-        seguir_caminhada = st.toggle(f"🚶‍♂️ Seguir caminhada de {filtro_personagem}", value=False)
+        nome_caminhada = f"🚶‍♂️ Seguir caminhada de {filtro_personagem}" if filtro_personagem != "Todos" else "🚶‍♂️ Traçar Rota no Mapa"
+        seguir_caminhada = st.toggle(nome_caminhada, value=False)
         
         if seguir_caminhada:
             iniciar_animacao = st.toggle("▶️ Iniciar Viagem Animada (Playback)", value=False)
@@ -309,7 +311,7 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.19.2 - CSS Modo Andarilho Corrigido")
+    st.caption("v1.19.2 - Textura ArcGIS Restaurada e Playback Desbloqueado")
 
 # --- CONTEÚDO PRINCIPAL ---
 
@@ -353,7 +355,7 @@ elif not st.session_state.modo_andarilho_ativo:
     if iniciar_animacao:
         st.success(f"🎬 **Viagem Histórica Ativada!** Acompanhe o trajeto de {filtro_personagem} ouvindo as passagens em cada local.")
     else:
-        st.info("🔊 Dica: Ative a opção 'Seguir Caminhada' e dê o 'Play' para iniciar o modo de Linha do Tempo Animada!")
+        st.info("🔊 Dica: Filtre o mapa, ative a opção 'Seguir caminhada' e dê o 'Play' para iniciar o modo de Linha do Tempo Animada!")
 
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
