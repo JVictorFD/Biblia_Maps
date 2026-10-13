@@ -4,6 +4,7 @@ import json
 import os
 import sqlite3
 import hashlib
+import base64
 from datetime import datetime
 
 st.set_page_config(
@@ -259,7 +260,6 @@ seguir_caminhada = False
 iniciar_animacao = False
 
 with st.sidebar:
-    # A TRAVA FOI REMOVIDA: Agora basta ter mais de 1 ponto no mapa para a opção aparecer!
     if len(eventos_filtrados) > 1:
         st.markdown("---")
         st.subheader("🗺️ Rota Histórica")
@@ -301,7 +301,7 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("Modo Imersivo")
     if not st.session_state.modo_andarilho_ativo:
-        if st.button("🚶‍♂️ Ativar Modo Andarilho (Cena)", use_container_width=True, type="primary"):
+        if st.button("🚶‍♂️ Ativar Modo Andarilho (360º)", use_container_width=True, type="primary"):
             st.session_state.modo_andarilho_ativo = True
             st.session_state.modo_leitura_diario = False
             st.rerun()
@@ -311,7 +311,7 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.19.2 - Textura ArcGIS Restaurada e Playback Desbloqueado")
+    st.caption("v1.20.0 - Motor Imersivo Pannellum 360º (Em Preparação)")
 
 # --- CONTEÚDO PRINCIPAL ---
 
@@ -649,6 +649,7 @@ elif not st.session_state.modo_andarilho_ativo:
     components.html(html_cesium, height=750)
 
 else:
+    # --- MODO ANDARILHO 360º (PANNELLUM) ---
     if not eventos_filtrados:
         st.warning("Nenhum evento corresponde à busca atual. Limpe a barra de pesquisa para retornar ao modo andarilho padrão.")
         html_modo_andarilho = f"""
@@ -691,76 +692,154 @@ else:
         
         nome_evento = evento_ativo.get("evento", "Cena Bíblica")
         subregiao = evento_ativo.get("subregiao", "")
-        arquivo_img = evento_ativo.get("imagem_cena", "")
         texto_versiculo = evento_ativo.get("versiculo", "Texto bíblico indisponível no momento.")
         texto_explicacao = evento_ativo.get("explicacao", "Contextualização histórica em desenvolvimento para este local.")
         
+        # LÓGICA DE BLINDAGEM 360º: Procura apenas por imagens que terminem em "_360.jpg"
+        arquivo_img_original = evento_ativo.get("imagem_cena", "")
+        if arquivo_img_original:
+            nome_base, ext = os.path.splitext(arquivo_img_original)
+            # Ex: Transforma 'jardim_eden.jpg' em 'jardim_eden_360.jpg'
+            arquivo_img_360 = f"{nome_base}_360{ext}"
+        else:
+            arquivo_img_360 = ""
+            
         diretorio_atual = os.path.dirname(os.path.abspath(__file__))
-        caminho_imagem = os.path.join(diretorio_atual, "dados", arquivo_img) if arquivo_img else ""
+        caminho_imagem_360 = os.path.join(diretorio_atual, "dados", arquivo_img_360) if arquivo_img_360 else ""
         
-        tem_imagem = caminho_imagem and os.path.exists(caminho_imagem)
+        tem_imagem_360 = caminho_imagem_360 and os.path.exists(caminho_imagem_360)
         
-        tag_imagem = ""
-        if tem_imagem:
-            import base64
-            with open(caminho_imagem, "rb") as img_file:
-                img_base64 = base64.b64encode(img_file.read()).decode()
-            tag_imagem = f'<img src="data:image/jpeg;base64,{img_base64}" alt="{nome_evento}">'
-
         texto_limpo = str(texto_versiculo).replace("'", "").replace('"', '').replace('\n', ' ').replace('\r', '').replace('\\', '').replace('`', '')
 
-        html_modo_andarilho = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{ margin: 0; padding: 0; background-color: #0d1117; }}
-                .andarilho-container {{
-                    position: relative; width: 100%; height: 100vh;
-                    background: linear-gradient(135deg, #1e293b, #0f172a);
-                    border-radius: 12px; overflow: hidden;
-                    display: flex; align-items: center; justify-content: center;
-                }}
-                .andarilho-container img {{
-                    width: 100%; height: 100%; object-fit: cover;
-                    position: absolute; top: 0; left: 0; opacity: 0.85; 
-                }}
-                .creditos-legenda {{
-                    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-                    width: 85%; max-width: 900px; background: rgba(15, 23, 42, 0.85);
-                    backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15);
-                    border-radius: 10px; padding: 20px 30px; color: #f8fafc;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.7);
-                }}
-                .creditos-legenda h2 {{ margin: 0 0 8px 0; font-size: 22px; color: #fbbf24; border-bottom: 1px solid rgba(251, 191, 36, 0.3); padding-bottom: 4px; }}
-                .creditos-legenda p.sub {{ margin: 0 0 12px 0; font-size: 14px; color: #94a3b8; font-style: italic; }}
-                .creditos-legenda blockquote {{ margin: 8px 0; padding-left: 12px; border-left: 3px solid #fbbf24; color: #e2e8f0; font-size: 14px; }}
-                .creditos-legenda p.explicacao {{ margin: 8px 0 0 0; font-size: 13px; color: #cbd5e1; line-height: 1.4; }}
-            </style>
-        </head>
-        <body>
-            <div class="andarilho-container">
-                {tag_imagem}
-                <div class="creditos-legenda">
-                    <button onclick="
-                        try {{
-                            var texto = this.parentElement.querySelector('blockquote').innerText;
-                            var msg = new SpeechSynthesisUtterance(texto);
-                            msg.lang = 'pt-BR';
-                            var synth = window.speechSynthesis;
-                            if(window.parent && window.parent.speechSynthesis) {{ synth = window.parent.speechSynthesis; }}
-                            synth.cancel();
-                            synth.speak(msg);
-                        }} catch(e) {{ console.log(e); }}
-                    " style="float: right; background: rgba(0,0,0,0.5); border: 1px solid #fbbf24; border-radius: 50%; padding: 8px; cursor: pointer; font-size: 18px; color: white;" title="Ouvir Versículo">🔊</button>
-                    <h2>📍 {nome_evento}</h2>
-                    <p class="sub"><b>Região:</b> {subregiao}</p>
-                    <blockquote>{texto_versiculo}</blockquote>
-                    <p class="explicacao">{texto_explicacao}</p>
+        if tem_imagem_360:
+            # SUCESSO: A imagem 360 foi encontrada! Injeta no Pannellum.
+            with open(caminho_imagem_360, "rb") as img_file:
+                img_base64 = base64.b64encode(img_file.read()).decode()
+                
+            html_modo_andarilho = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
+                <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+                <style>
+                    body {{ margin: 0; padding: 0; background-color: #0d1117; }}
+                    .andarilho-container {{
+                        position: relative; width: 100%; height: 100vh;
+                        border-radius: 12px; overflow: hidden;
+                    }}
+                    #panorama {{ width: 100%; height: 100%; }}
+                    .creditos-legenda {{
+                        position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+                        width: 85%; max-width: 900px; background: rgba(15, 23, 42, 0.85);
+                        backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15);
+                        border-radius: 10px; padding: 20px 30px; color: #f8fafc;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.7); z-index: 10;
+                    }}
+                    .creditos-legenda h2 {{ margin: 0 0 8px 0; font-size: 22px; color: #fbbf24; border-bottom: 1px solid rgba(251, 191, 36, 0.3); padding-bottom: 4px; }}
+                    .creditos-legenda p.sub {{ margin: 0 0 12px 0; font-size: 14px; color: #94a3b8; font-style: italic; }}
+                    .creditos-legenda blockquote {{ margin: 8px 0; padding-left: 12px; border-left: 3px solid #fbbf24; color: #e2e8f0; font-size: 14px; }}
+                    .creditos-legenda p.explicacao {{ margin: 8px 0 0 0; font-size: 13px; color: #cbd5e1; line-height: 1.4; }}
+                </style>
+            </head>
+            <body>
+                <div class="andarilho-container">
+                    <div id="panorama"></div>
+                    <div class="creditos-legenda">
+                        <button onclick="
+                            try {{
+                                var texto = this.parentElement.querySelector('blockquote').innerText;
+                                var msg = new SpeechSynthesisUtterance(texto);
+                                msg.lang = 'pt-BR';
+                                var synth = window.speechSynthesis;
+                                if(window.parent && window.parent.speechSynthesis) {{ synth = window.parent.speechSynthesis; }}
+                                synth.cancel();
+                                synth.speak(msg);
+                            }} catch(e) {{ console.log(e); }}
+                        " style="float: right; background: rgba(0,0,0,0.5); border: 1px solid #fbbf24; border-radius: 50%; padding: 8px; cursor: pointer; font-size: 18px; color: white;" title="Ouvir Versículo">🔊</button>
+                        <h2>📍 {nome_evento}</h2>
+                        <p class="sub"><b>Região:</b> {subregiao}</p>
+                        <blockquote>{texto_versiculo}</blockquote>
+                        <p class="explicacao">{texto_explicacao}</p>
+                    </div>
                 </div>
-            </div>
-        </body>
-        </html>
-        """
+                <script>
+                    pannellum.viewer('panorama', {{
+                        "type": "equirectangular",
+                        "panorama": "data:image/jpeg;base64,{img_base64}",
+                        "autoLoad": true,
+                        "compass": false,
+                        "showControls": false,
+                        "mouseZoom": false
+                    }});
+                </script>
+            </body>
+            </html>
+            """
+        else:
+            # FALLBACK: Imagem 360 não encontrada. Mostra a mensagem de "Em Breve" sem quebrar nada!
+            html_modo_andarilho = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ margin: 0; padding: 0; background-color: #0d1117; }}
+                    .andarilho-container {{
+                        position: relative; width: 100%; height: 100vh;
+                        background: linear-gradient(135deg, #0f172a, #1e293b, #020617);
+                        border-radius: 12px; overflow: hidden;
+                        display: flex; flex-direction: column; align-items: center; justify-content: center;
+                    }}
+                    .em-breve-box {{
+                        text-align: center; color: rgba(255, 255, 255, 0.4);
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        margin-top: -15vh;
+                    }}
+                    .em-breve-box h1 {{ font-size: 3rem; margin-bottom: 5px; color: #fbbf24; opacity: 0.6; }}
+                    .em-breve-box p {{ font-size: 1.1rem; letter-spacing: 1px; }}
+                    
+                    .creditos-legenda {{
+                        position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+                        width: 85%; max-width: 900px; background: rgba(15, 23, 42, 0.85);
+                        backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15);
+                        border-radius: 10px; padding: 20px 30px; color: #f8fafc;
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+                    }}
+                    .creditos-legenda h2 {{ margin: 0 0 8px 0; font-size: 22px; color: #fbbf24; border-bottom: 1px solid rgba(251, 191, 36, 0.3); padding-bottom: 4px; }}
+                    .creditos-legenda p.sub {{ margin: 0 0 12px 0; font-size: 14px; color: #94a3b8; font-style: italic; }}
+                    .creditos-legenda blockquote {{ margin: 8px 0; padding-left: 12px; border-left: 3px solid #fbbf24; color: #e2e8f0; font-size: 14px; }}
+                    .creditos-legenda p.explicacao {{ margin: 8px 0 0 0; font-size: 13px; color: #cbd5e1; line-height: 1.4; }}
+                </style>
+            </head>
+            <body>
+                <div class="andarilho-container">
+                    <div class="em-breve-box">
+                        <h1>🚧 Em Breve</h1>
+                        <p>Experiência Imersiva 360° em construção para este local.</p>
+                    </div>
+                    
+                    <div class="creditos-legenda">
+                        <button onclick="
+                            try {{
+                                var texto = this.parentElement.querySelector('blockquote').innerText;
+                                var msg = new SpeechSynthesisUtterance(texto);
+                                msg.lang = 'pt-BR';
+                                var synth = window.speechSynthesis;
+                                if(window.parent && window.parent.speechSynthesis) {{ synth = window.parent.speechSynthesis; }}
+                                synth.cancel();
+                                synth.speak(msg);
+                            }} catch(e) {{ console.log(e); }}
+                        " style="float: right; background: rgba(0,0,0,0.5); border: 1px solid #fbbf24; border-radius: 50%; padding: 8px; cursor: pointer; font-size: 18px; color: white;" title="Ouvir Versículo">🔊</button>
+                        <h2>📍 {nome_evento}</h2>
+                        <p class="sub"><b>Região:</b> {subregiao}</p>
+                        <blockquote>{texto_versiculo}</blockquote>
+                        <p class="explicacao">{texto_explicacao}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+        
         components.html(html_modo_andarilho, height=750)
