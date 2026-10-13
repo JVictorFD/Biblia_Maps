@@ -42,87 +42,9 @@ conexao_db = inicializar_banco()
 def hash_senha(senha):
     return hashlib.sha256(senha.encode()).hexdigest()
 
-# Injeção de CSS Base
+# Injeção de CSS Base (Removido o CSS do andarilho daqui, pois ele roda isolado no iframe)
 st.markdown("""
     <style>
-        .block-container {
-            padding-top: 1rem;
-            padding-bottom: 0rem;
-            padding-left: 0rem;
-            padding-right: 0rem;
-        }
-        
-        .andarilho-container {
-            position: relative;
-            width: 100%;
-            height: 80vh;
-            background-color: #0d1117;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .andarilho-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            position: absolute;
-            top: 0;
-            left: 0;
-            opacity: 0.85; 
-        }
-        
-        .creditos-legenda {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 85%;
-            max-width: 900px;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 10px;
-            padding: 20px 30px;
-            color: #f8fafc;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.7);
-            z-index: 10;
-        }
-        
-        .creditos-legenda h2 {
-            margin: 0 0 8px 0;
-            font-size: 22px;
-            color: #fbbf24;
-            border-bottom: 1px solid rgba(251, 191, 36, 0.3);
-            padding-bottom: 4px;
-        }
-        
-        .creditos-legenda p.sub {
-            margin: 0 0 12px 0;
-            font-size: 14px;
-            color: #94a3b8;
-            font-style: italic;
-        }
-        
-        .creditos-legenda blockquote {
-            margin: 8px 0;
-            padding-left: 12px;
-            border-left: 3px solid #fbbf24;
-            color: #e2e8f0;
-            font-size: 14px;
-        }
-        
-        .creditos-legenda p.explicacao {
-            margin: 8px 0 0 0;
-            font-size: 13px;
-            color: #cbd5e1;
-            line-height: 1.4;
-        }
-        
         .itinerario-box {
             background-color: rgba(255, 255, 255, 0.05);
             padding: 10px;
@@ -334,6 +256,8 @@ elif filtro_personagem == "Todos" and filtro_testamento == "Todos" and filtro_ep
 
 # --- BARRA LATERAL (AÇÃO E ITINERÁRIO) ---
 seguir_caminhada = False
+iniciar_animacao = False
+
 with st.sidebar:
     if filtro_personagem != "Todos" and len(eventos_filtrados) > 1:
         st.markdown("---")
@@ -342,6 +266,8 @@ with st.sidebar:
         seguir_caminhada = st.toggle(f"🚶‍♂️ Seguir caminhada de {filtro_personagem}", value=False)
         
         if seguir_caminhada:
+            iniciar_animacao = st.toggle("▶️ Iniciar Viagem Animada (Playback)", value=False)
+            
             st.info(f"Itinerário mapeado ({len(eventos_filtrados)} locais):")
             for i, ev in enumerate(eventos_filtrados):
                 st.markdown(f"<div class='itinerario-box'><b>{i+1}. {ev.get('subregiao', 'Local')}</b><br><small>{ev.get('evento', '')}</small></div>", unsafe_allow_html=True)
@@ -383,7 +309,7 @@ with st.sidebar:
             st.rerun()
             
     st.markdown("---")
-    st.caption("v1.18.1 - Patch da Web Speech API (Bypass DOMPurify)")
+    st.caption("v1.19.2 - CSS Modo Andarilho Corrigido")
 
 # --- CONTEÚDO PRINCIPAL ---
 
@@ -424,7 +350,10 @@ if st.session_state.modo_leitura_diario:
 
 elif not st.session_state.modo_andarilho_ativo:
     
-    st.info("🔊 Patch de Áudio aplicado! Teste clicar nos pop-ups do mapa ou no Modo Andarilho para ouvir a narração.")
+    if iniciar_animacao:
+        st.success(f"🎬 **Viagem Histórica Ativada!** Acompanhe o trajeto de {filtro_personagem} ouvindo as passagens em cada local.")
+    else:
+        st.info("🔊 Dica: Ative a opção 'Seguir Caminhada' e dê o 'Play' para iniciar o modo de Linha do Tempo Animada!")
 
     if not eventos_filtrados:
         st.warning("Nenhum evento encontrado com os filtros ou termos de pesquisa aplicados.")
@@ -440,12 +369,19 @@ elif not st.session_state.modo_andarilho_ativo:
         """
 
     javascript_markers = ""
-    for evento in eventos_filtrados:
+    tour_events_js = []
+    
+    for i, evento in enumerate(eventos_filtrados):
         lat, lon = evento["coordenadas"]
-        nome_js = evento.get('evento', '').replace('"', '')
-        subregiao_js = evento.get('subregiao', '').replace('"', '')
         
-        # O HTML limpo APENAS COM ID, sem 'onclick' quebrando no DOMPurify
+        nome_js = str(evento.get('evento', '')).replace("'", "").replace('"', '').replace('\n', ' ').replace('\r', '').replace('\\', '').replace('`', '')
+        subregiao_js = str(evento.get('subregiao', '')).replace("'", "").replace('"', '').replace('\n', ' ').replace('\r', '').replace('\\', '').replace('`', '')
+        versiculo_puro = str(evento.get('versiculo', 'Texto indisponível.')).replace("'", "").replace('"', '').replace('\n', ' ').replace('\r', '').replace('\\', '').replace('`', '')
+        
+        id_entidade = f"evt_{i}"
+        
+        tour_events_js.append(f"{{ id: '{id_entidade}', name: '{nome_js}', lat: {lat}, lon: {lon}, text: '{versiculo_puro}' }}")
+        
         html_popup = f"""
         <div style="font-family: Arial, sans-serif; padding: 5px;">
             <p style="margin: 4px 0; font-size: 13px; color: white;"><b>Local:</b> {subregiao_js}</p>
@@ -453,7 +389,7 @@ elif not st.session_state.modo_andarilho_ativo:
             <p style="margin: 4px 0; font-size: 13px; color: white;"><b>Referência:</b> <i>{evento.get('referencia', '')}</i></p>
             <div style="margin-top: 12px; margin-bottom: 12px; background-color: #fcfbf7; padding: 10px; border-left: 4px solid #d35400;">
                 <button id="btn-audio-cesium" style="float: right; background: none; border: none; cursor: pointer; font-size: 16px;" title="Ouvir Narração">🔊</button>
-                <p class="texto-versiculo-ler" style="margin: 0; font-size: 13px; font-style: italic; color: #444;">{evento.get('versiculo', 'Texto indisponível.')}</p>
+                <p class="texto-versiculo-ler" style="margin: 0; font-size: 13px; font-style: italic; color: #444;">{versiculo_puro}</p>
             </div>
             <p style="margin: 0; font-size: 11px; color: #ccc;"><b>Geografia Atual:</b> {evento.get('local_atual', '')}</p>
         </div>
@@ -461,6 +397,7 @@ elif not st.session_state.modo_andarilho_ativo:
         
         javascript_markers += f"""
         viewer.entities.add({{
+            id: "{id_entidade}",
             name: "{nome_js}",
             position: Cesium.Cartesian3.fromDegrees({lon}, {lat}),
             point: {{ 
@@ -506,14 +443,20 @@ elif not st.session_state.modo_andarilho_ativo:
     lat_foco, lon_foco = st.session_state.coordenadas_foco
     alt_foco = st.session_state.zoom_foco
     
-    if seguir_caminhada and len(eventos_filtrados) > 1:
-        javascript_camera = "viewer.zoomTo(viewer.entities).then(function(){ viewer.camera.zoomOut(1000000); });"
+    if iniciar_animacao:
+        javascript_camera = "" 
     else:
-        javascript_camera = f"""
-        viewer.camera.flyTo({{
-            destination: Cesium.Cartesian3.fromDegrees({lon_foco}, {lat_foco}, {alt_foco})
-        }});
-        """
+        if seguir_caminhada and len(eventos_filtrados) > 1:
+            javascript_camera = "viewer.zoomTo(viewer.entities).then(function(){ viewer.camera.zoomOut(1000000); });"
+        else:
+            javascript_camera = f"""
+            viewer.camera.flyTo({{
+                destination: Cesium.Cartesian3.fromDegrees({lon_foco}, {lat_foco}, {alt_foco})
+            }});
+            """
+            
+    tour_events_str = ", ".join(tour_events_js)
+    flag_animacao_ativa = "true" if iniciar_animacao else "false"
 
     html_cesium = f"""
     <!DOCTYPE html>
@@ -543,10 +486,45 @@ elif not st.session_state.modo_andarilho_ativo:
                 background-color: #0d1117 !important;
                 color: #fbbf24 !important;
             }}
+            
+            #tour-progress-container {{
+                position: absolute;
+                bottom: 30px;
+                left: 10%;
+                width: 80%;
+                height: 8px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+                z-index: 1000;
+                display: none;
+                box-shadow: 0px 2px 10px rgba(0,0,0,0.5);
+            }}
+            #tour-track {{
+                height: 100%;
+                background: #fbbf24;
+                width: 0%;
+                border-radius: 4px;
+                transition: width 2.5s ease-in-out;
+            }}
+            #tour-character {{
+                position: absolute;
+                top: -32px;
+                left: 0%;
+                font-size: 32px;
+                transition: left 2.5s ease-in-out;
+                transform: translateX(-50%);
+                text-shadow: 0px 4px 10px rgba(0,0,0,0.8);
+            }}
         </style>
     </head>
     <body>
         <div id="cesiumContainer"></div>
+        
+        <div id="tour-progress-container">
+            <div id="tour-character">🚶‍♂️</div>
+            <div id="tour-track"></div>
+        </div>
+        
         <script>
             Cesium.Ion.defaultAccessToken = '';
 
@@ -570,24 +548,19 @@ elif not st.session_state.modo_andarilho_ativo:
             {javascript_polyline}
             {javascript_camera}
 
-            // O SCRIPT MESTRE: Monitora os cliques do pop-up por fora do DOMPurify
             viewer.selectedEntityChanged.addEventListener(function(entity) {{
                 if (entity && viewer.infoBox) {{
-                    // Espera meio segundo para garantir que a janela e o iframe interno foram montados na tela
                     setTimeout(function() {{
                         try {{
                             var iframeDoc = viewer.infoBox.frame.contentDocument || viewer.infoBox.frame.contentWindow.document;
                             if (iframeDoc) {{
                                 var btn = iframeDoc.getElementById('btn-audio-cesium');
                                 if (btn) {{
-                                    // Amarra o evento JavaScript dinamicamente, blindando contra os filtros do Cesium
                                     btn.onclick = function() {{
                                         var textoLocal = iframeDoc.querySelector('.texto-versiculo-ler').innerText;
                                         var msg = new SpeechSynthesisUtterance(textoLocal);
                                         msg.lang = 'pt-BR';
-                                        msg.rate = 1.0;
                                         
-                                        // Usa o synth do parent iframe para impedir que o navegador bloqueie audios em sandboxes
                                         var synth = window.speechSynthesis;
                                         if (window.parent && window.parent.speechSynthesis) {{
                                             synth = window.parent.speechSynthesis;
@@ -603,6 +576,69 @@ elif not st.session_state.modo_andarilho_ativo:
                     }}, 400);
                 }}
             }});
+            
+            const isAnimationActive = {flag_animacao_ativa};
+            const tourEvents = [{tour_events_str}];
+            
+            if (isAnimationActive && tourEvents.length > 1) {{
+                document.getElementById('tour-progress-container').style.display = 'block';
+                let currentIdx = 0;
+                
+                function playNextEvent() {{
+                    if (currentIdx >= tourEvents.length) {{
+                        setTimeout(() => {{
+                            document.getElementById('tour-progress-container').style.display = 'none';
+                        }}, 3000);
+                        return;
+                    }}
+                    
+                    let ev = tourEvents[currentIdx];
+                    let progressPct = (currentIdx / (tourEvents.length - 1)) * 100;
+                    
+                    document.getElementById('tour-track').style.width = progressPct + '%';
+                    document.getElementById('tour-character').style.left = progressPct + '%';
+                    
+                    viewer.camera.flyTo({{
+                        destination: Cesium.Cartesian3.fromDegrees(ev.lon, ev.lat, 800000),
+                        duration: 3.0,
+                        complete: function() {{
+                            viewer.selectedEntity = viewer.entities.getById(ev.id);
+                            
+                            setTimeout(() => {{
+                                try {{
+                                    var msg = new SpeechSynthesisUtterance(ev.text);
+                                    msg.lang = 'pt-BR';
+                                    
+                                    var synth = window.speechSynthesis;
+                                    if (window.parent && window.parent.speechSynthesis) {{
+                                        synth = window.parent.speechSynthesis;
+                                    }}
+                                    synth.cancel();
+                                    synth.speak(msg);
+                                    
+                                    let speechCheck = setInterval(() => {{
+                                        if (!synth.speaking) {{
+                                            clearInterval(speechCheck);
+                                            setTimeout(() => {{
+                                                currentIdx++;
+                                                playNextEvent();
+                                            }}, 2500); 
+                                        }}
+                                    }}, 500);
+                                    
+                                }} catch (err) {{
+                                    setTimeout(() => {{
+                                        currentIdx++;
+                                        playNextEvent();
+                                    }}, 8000);
+                                }}
+                            }}, 1000);
+                        }}
+                    }});
+                }}
+                
+                setTimeout(playNextEvent, 2000);
+            }}
         </script>
     </body>
     </html>
@@ -614,12 +650,38 @@ else:
     if not eventos_filtrados:
         st.warning("Nenhum evento corresponde à busca atual. Limpe a barra de pesquisa para retornar ao modo andarilho padrão.")
         html_modo_andarilho = f"""
-        <div class="andarilho-container">
-            <div class="creditos-legenda" style="text-align: center;">
-                <h2>📍 Local não encontrado</h2>
-                <p class="explicacao">Ajuste os filtros ou a busca lateral para explorar os cenários bíblicos.</p>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ margin: 0; padding: 0; background-color: #0d1117; }}
+                .andarilho-container {{
+                    position: relative; width: 100%; height: 100vh;
+                    background: linear-gradient(135deg, #1e293b, #0f172a);
+                    border-radius: 12px; overflow: hidden;
+                    display: flex; align-items: center; justify-content: center;
+                }}
+                .creditos-legenda {{
+                    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+                    width: 85%; max-width: 900px; background: rgba(15, 23, 42, 0.85);
+                    backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15);
+                    border-radius: 10px; padding: 20px 30px; color: #f8fafc;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.7); text-align: center;
+                }}
+                .creditos-legenda h2 {{ margin: 0 0 8px 0; font-size: 22px; color: #fbbf24; border-bottom: 1px solid rgba(251, 191, 36, 0.3); padding-bottom: 4px; }}
+                .creditos-legenda p.explicacao {{ margin: 8px 0 0 0; font-size: 13px; color: #cbd5e1; line-height: 1.4; }}
+            </style>
+        </head>
+        <body>
+            <div class="andarilho-container">
+                <div class="creditos-legenda">
+                    <h2>📍 Local não encontrado</h2>
+                    <p class="explicacao">Ajuste os filtros ou a busca lateral para explorar os cenários bíblicos.</p>
+                </div>
             </div>
-        </div>
+        </body>
+        </html>
         """
         components.html(html_modo_andarilho, height=750)
     else:
@@ -643,27 +705,60 @@ else:
                 img_base64 = base64.b64encode(img_file.read()).decode()
             tag_imagem = f'<img src="data:image/jpeg;base64,{img_base64}" alt="{nome_evento}">'
 
-        # O botão do Modo Andarilho também foi refatorado para ler direto do DOM via DOM Traversal
+        texto_limpo = str(texto_versiculo).replace("'", "").replace('"', '').replace('\n', ' ').replace('\r', '').replace('\\', '').replace('`', '')
+
         html_modo_andarilho = f"""
-        <div class="andarilho-container">
-            {tag_imagem}
-            <div class="creditos-legenda">
-                <button onclick="
-                    try {{
-                        var texto = this.parentElement.querySelector('blockquote').innerText;
-                        var msg = new SpeechSynthesisUtterance(texto);
-                        msg.lang = 'pt-BR';
-                        var synth = window.speechSynthesis;
-                        if(window.parent && window.parent.speechSynthesis) {{ synth = window.parent.speechSynthesis; }}
-                        synth.cancel();
-                        synth.speak(msg);
-                    }} catch(e) {{ console.log(e); }}
-                " style="float: right; background: rgba(0,0,0,0.5); border: 1px solid #fbbf24; border-radius: 50%; padding: 8px; cursor: pointer; font-size: 18px; color: white;" title="Ouvir Versículo">🔊</button>
-                <h2>📍 {nome_evento}</h2>
-                <p class="sub"><b>Região:</b> {subregiao}</p>
-                <blockquote>{texto_versiculo}</blockquote>
-                <p class="explicacao">{texto_explicacao}</p>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ margin: 0; padding: 0; background-color: #0d1117; }}
+                .andarilho-container {{
+                    position: relative; width: 100%; height: 100vh;
+                    background: linear-gradient(135deg, #1e293b, #0f172a);
+                    border-radius: 12px; overflow: hidden;
+                    display: flex; align-items: center; justify-content: center;
+                }}
+                .andarilho-container img {{
+                    width: 100%; height: 100%; object-fit: cover;
+                    position: absolute; top: 0; left: 0; opacity: 0.85; 
+                }}
+                .creditos-legenda {{
+                    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+                    width: 85%; max-width: 900px; background: rgba(15, 23, 42, 0.85);
+                    backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.15);
+                    border-radius: 10px; padding: 20px 30px; color: #f8fafc;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.7);
+                }}
+                .creditos-legenda h2 {{ margin: 0 0 8px 0; font-size: 22px; color: #fbbf24; border-bottom: 1px solid rgba(251, 191, 36, 0.3); padding-bottom: 4px; }}
+                .creditos-legenda p.sub {{ margin: 0 0 12px 0; font-size: 14px; color: #94a3b8; font-style: italic; }}
+                .creditos-legenda blockquote {{ margin: 8px 0; padding-left: 12px; border-left: 3px solid #fbbf24; color: #e2e8f0; font-size: 14px; }}
+                .creditos-legenda p.explicacao {{ margin: 8px 0 0 0; font-size: 13px; color: #cbd5e1; line-height: 1.4; }}
+            </style>
+        </head>
+        <body>
+            <div class="andarilho-container">
+                {tag_imagem}
+                <div class="creditos-legenda">
+                    <button onclick="
+                        try {{
+                            var texto = this.parentElement.querySelector('blockquote').innerText;
+                            var msg = new SpeechSynthesisUtterance(texto);
+                            msg.lang = 'pt-BR';
+                            var synth = window.speechSynthesis;
+                            if(window.parent && window.parent.speechSynthesis) {{ synth = window.parent.speechSynthesis; }}
+                            synth.cancel();
+                            synth.speak(msg);
+                        }} catch(e) {{ console.log(e); }}
+                    " style="float: right; background: rgba(0,0,0,0.5); border: 1px solid #fbbf24; border-radius: 50%; padding: 8px; cursor: pointer; font-size: 18px; color: white;" title="Ouvir Versículo">🔊</button>
+                    <h2>📍 {nome_evento}</h2>
+                    <p class="sub"><b>Região:</b> {subregiao}</p>
+                    <blockquote>{texto_versiculo}</blockquote>
+                    <p class="explicacao">{texto_explicacao}</p>
+                </div>
             </div>
-        </div>
+        </body>
+        </html>
         """
         components.html(html_modo_andarilho, height=750)
